@@ -1,0 +1,337 @@
+{
+  "cards": [
+    {
+      "id": "study-1",
+      "name": "BAC",
+      "type": "study",
+      "studyLevel": 1,
+      "smiles": 1,
+      "description": "Niveau d'études: Bac",
+      "image": "🎓",
+      "quantity": 8
+    },
+    {
+      "id": "study-2",
+      "name": "BAC+2",
+      "type": "study",
+      "studyLevel": 2,
+      "smiles": 2,
+      "description": "Niveau d'études: Bac+2",
+      "image": "📚",
+      "quantity": 6
+    },
+    {
+      "id": "study-3",
+      "name": "BAC+3",
+      "type": "study",
+      "studyLevel": 1,
+      "smiles": 1,
+      "description": "Niveau d'études: Bac+3",
+      "image": "📖",
+      "quantity": 6
+    },
+    {
+      "id": "study-4",
+      "name": "BAC+5",
+      "type": "study",
+      "studyLevel": 2,
+      "smiles": 2,
+      "description": "Niveau d'études: Bac+5",
+      "image": "🎯",
+      "quantity": 4
+    },
+    {
+      "id": "study-5",
+      "name": "Doctorat",
+      "type": "study",
+      "studyLevel": 1,
+      "smiles": 2,
+      "description": "Niveau d'études: Doctorat",
+      "image": "🏆",
+      "quantity": 2
+    },
+    {
+      "id": "job-1",
+      "name": "Serveur",
+      "type": "job",
+      "requiredStudies": 0,
+      "smiles": 1,
+      "description": "Métier: Serveur",
+      "image": "☕",
+      "quantity": 4
+    },
+    {
+      "id": "job-2",
+      "name": "Vendeur",
+      "type": "job",
+      "requiredStudies": 1,
+      "smiles": 2,
+      "description": "Métier: Vendeur",
+      "image": "🛍️",
+      "quantity": 4
+    },
+    {
+      "id": "job-3",
+      "name": "Infirmier",
+      "type": "job",
+      "requiredStudies": 3,
+      "smiles": 3,
+      "description": "Métier: Infirmier",
+      "image": "💉",
+      "quantity": 3
+    },
+    {
+      "id": "job-4",
+      "name": "Ingénieur",
+      "type": "job",
+      "requiredStudies": 5,
+      "smiles": 4,
+      "description": "Métier: Ingénieur",
+      "image": "⚙️",
+      "quantity": 3
+    },
+    {
+      "id": "job-5",
+      "name": "Médecin",
+      "type": "job",
+      "requiredStudies": 6,
+      "smiles": 5,
+      "description": "Métier: Médecin",
+      "image": "🩺",
+      "quantity": 2
+    },
+    {
+      "id": "job-6",
+      "name": "Avocat",
+      "type": "job",
+      "requiredStudies": 5,
+      "smiles": 4,
+      "description": "Métier: Avocat",
+      "image": "⚖️",
+      "quantity": 2
+    },
+    {
+      "id": "job-7",
+      "name": "Artiste",
+      "type": "job",
+      "requiredStudies": 2,
+      "smiles": 3,
+      "description": "Métier: Artiste",
+      "image": "🎨",
+      "quantity": 3
+    },
+    {
+      "id": "flirt-1",
+      "name": "Flirt au Café",
+      "type": "flirt",
+      "location": "café",
+      "smiles": 1,
+      "description": "Rencontre au café",
+      "image": "☕❤️",
+      "quantity": 5
+    },
+    {
+      "id": "flirt-2",
+      "name": "Flirt au Cinéma",
+      "type": "flirt",
+      "location": "cinéma",
+      "smiles": 1,
+      "description": "Rencontre au cinéma",
+      "image": "🎬❤️",
+      "quantity": 5
+    },
+    {
+      "id": "flirt-3",
+      "name": "Flirt à l'Hôtel",
+      "type": "flirt",
+      "location": "hôtel",
+      "smiles": 2,
+      "canMakeBaby": true,
+      "description": "Rencontre à l'hôtel",
+      "image": "🏨❤️",
+      "quantity": 4
+    },
+    {
+      "id": "flirt-4",
+      "name": "Flirt au Camping",
+      "type": "flirt",
+      "location": "camping",
+      "smiles": 1,
+      "canMakeBaby": true,
+      "description": "Rencontre au camping",
+      "image": "⛺❤️",
+      "quantity": 4
+    },
+    {
+      "id": "flirt-5",
+      "name": "Flirt au Parc",
+      "type": "flirt",
+      "location": "parc",
+      "smiles": 1,
+      "description": "Rencontre au parc",
+      "image": "🌳❤️",
+      "quantity": 5
+    },
+    {
+      "id": "marriage-1",
+      "name": "Mariage",
+      "type": "marriage",
+      "smiles": 5,
+      "description": "Vous vous mariez!",
+      "image": "💒",
+      "quantity": 6
+    },
+    {
+      "id": "child-1",
+      "name": "Bébé",
+      "type": "child",
+      "smiles": 3,
+      "description": "Naissance d'un enfant",
+      "image": "👶",
+      "quantity": 8
+    },
+    {
+      "id": "pet-1",
+      "name": "Chat",
+      "type": "pet",
+      "smiles": 2,
+      "description": "Adoption d'un chat",
+      "image": "🐱",
+      "quantity": 5
+    },
+    {
+      "id": "pet-2",
+      "name": "Chien",
+      "type": "pet",
+      "smiles": 2,
+      "description": "Adoption d'un chien",
+      "image": "🐕",
+      "quantity": 5
+    },
+    {
+      "id": "pet-3",
+      "name": "Lapin",
+      "type": "pet",
+      "smiles": 1,
+      "description": "Adoption d'un lapin",
+      "image": "🐰",
+      "quantity": 3
+    },
+    {
+      "id": "salary-1",
+      "name": "Salaire",
+      "type": "salary",
+      "smiles": 1,
+      "description": "Vous recevez un salaire",
+      "image": "💰",
+      "quantity": 15
+    },
+    {
+      "id": "travel-1",
+      "name": "Voyage à Paris",
+      "type": "travel",
+      "cost": 2,
+      "smiles": 3,
+      "description": "Voyage à Paris",
+      "image": "🗼",
+      "quantity": 3
+    },
+    {
+      "id": "travel-2",
+      "name": "Voyage à Tokyo",
+      "type": "travel",
+      "cost": 4,
+      "smiles": 5,
+      "description": "Voyage à Tokyo",
+      "image": "🗾",
+      "quantity": 2
+    },
+    {
+      "id": "travel-3",
+      "name": "Voyage à New York",
+      "type": "travel",
+      "cost": 3,
+      "smiles": 4,
+      "description": "Voyage à New York",
+      "image": "🗽",
+      "quantity": 2
+    },
+    {
+      "id": "travel-4",
+      "name": "Voyage aux Bahamas",
+      "type": "travel",
+      "cost": 5,
+      "smiles": 6,
+      "description": "Voyage aux Bahamas",
+      "image": "🏝️",
+      "quantity": 2
+    },
+    {
+      "id": "malus-1",
+      "name": "Divorce",
+      "type": "malus",
+      "effect": "divorce",
+      "smiles": -3,
+      "description": "Divorce forcé",
+      "image": "💔",
+      "quantity": 4
+    },
+    {
+      "id": "malus-2",
+      "name": "Licenciement",
+      "type": "malus",
+      "effect": "fired",
+      "smiles": -2,
+      "description": "Vous êtes licencié",
+      "image": "📉",
+      "quantity": 4
+    },
+    {
+      "id": "malus-3",
+      "name": "Accident",
+      "type": "malus",
+      "effect": "accident",
+      "smilesLoss": 2,
+      "description": "Accident: -2 smiles",
+      "image": "🚨",
+      "quantity": 5
+    },
+    {
+      "id": "malus-4",
+      "name": "Burn-out",
+      "type": "malus",
+      "effect": "accident",
+      "smilesLoss": 3,
+      "description": "Burn-out: -3 smiles",
+      "image": "😰",
+      "quantity": 3
+    },
+    {
+      "id": "special-1",
+      "name": "Adultère",
+      "type": "adultery",
+      "smiles": 0,
+      "description": "Permet de flirter en étant marié",
+      "image": "😈",
+      "quantity": 3
+    },
+    {
+      "id": "special-2",
+      "name": "Chance",
+      "type": "special",
+      "smiles": 2,
+      "description": "Coup de chance!",
+      "image": "🍀",
+      "quantity": 4
+    },
+    {
+      "id": "special-3",
+      "name": "Anniversaire",
+      "type": "special",
+      "smiles": 1,
+      "description": "Joyeux anniversaire!",
+      "image": "🎂",
+      "quantity": 4
+    }
+  ]
+}
