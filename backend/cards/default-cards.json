@@ -292,7 +292,7 @@
       "type": "malus",
       "effect": "accident",
       "smilesLoss": 2,
-      "description": "Accident: -2 smiles",
+      "description": "Accident: -2 smiles et saute le prochain tour",
       "image": "🚨",
       "quantity": 5
     },
@@ -302,9 +302,19 @@
       "type": "malus",
       "effect": "accident",
       "smilesLoss": 3,
-      "description": "Burn-out: -3 smiles",
+      "description": "Burn-out: -3 smiles et saute le prochain tour",
       "image": "😰",
       "quantity": 3
+    },
+    {
+      "id": "malus-5",
+      "name": "Maladie",
+      "type": "malus",
+      "effect": "skip_turn",
+      "smilesLoss": 0,
+      "description": "Maladie: saute le prochain tour",
+      "image": "🤒",
+      "quantity": 4
     },
     {
       "id": "special-1",

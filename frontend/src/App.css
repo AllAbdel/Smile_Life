@@ -288,6 +288,16 @@ body {
   box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
 }
 
+.opponent-card.current-turn {
+  border-color: #4CAF50;
+  background: linear-gradient(to bottom, #e8f5e9 0%, white 100%);
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+}
+
+.opponent-card.current-turn:hover {
+  border-color: #4CAF50;
+}
+
 .opponent-header {
   display: flex;
   justify-content: space-between;
@@ -410,6 +420,12 @@ body {
   padding: 20px;
 }
 
+.player-area.my-turn {
+  border: 3px solid #4CAF50;
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.4);
+  background: linear-gradient(to bottom, #e8f5e9 0%, white 100%);
+}
+
 .player-header {
   display: flex;
   justify-content: space-between;
@@ -450,6 +466,18 @@ body {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
+.stat-job {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: white;
+  font-weight: bold;
+}
+
+.stat-no-job {
+  background: #f5f5f5;
+  color: #999;
+  font-style: italic;
+}
+
 .played-cards {
   margin-bottom: 20px;
 }
@@ -478,6 +506,19 @@ body {
 .mini-card.malus {
   border-color: #ff5252;
   background: #ffebee;
+}
+
+.mini-card.job-card {
+  border-color: #FFD700;
+  background: linear-gradient(to bottom, #FFF9E6 0%, white 100%);
+  font-weight: bold;
+}
+
+.card-mini-smiles {
+  font-size: 0.7em;
+  margin-top: 3px;
+  color: #4CAF50;
+  font-weight: bold;
 }
 
 .card-emoji {

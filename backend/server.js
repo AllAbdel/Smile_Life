@@ -53,7 +53,8 @@ class Game {
       married: false,
       children: [],
       pets: [],
-      salary: []
+      salary: [],
+      skipNextTurn: false
     });
     return true;
   }
@@ -178,6 +179,9 @@ class Game {
       
       case 'job':
         if (player.studies >= (card.requiredStudies || 0)) {
+          if (player.job && !isNegative) {
+            return { success: false, message: "Vous avez déjà un métier. Démissionnez d'abord (défaussez votre carte métier)" };
+          }
           if (player.job) {
             // Démissionner de l'ancien job
             player.playedCards = player.playedCards.filter(c => c.id !== player.job.id);
@@ -299,6 +303,11 @@ class Game {
       
       case 'accident':
         player.smiles = Math.max(0, player.smiles - (card.smilesLoss || 2));
+        player.skipNextTurn = true; // Sauter le prochain tour
+        break;
+      
+      case 'skip_turn':
+        player.skipNextTurn = true; // Sauter le prochain tour
         break;
       
       default:
@@ -308,6 +317,23 @@ class Game {
 
   nextTurn() {
     this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+    
+    // Si le joueur suivant doit sauter son tour
+    const currentPlayer = this.players[this.currentPlayerIndex];
+    if (currentPlayer.skipNextTurn) {
+      currentPlayer.skipNextTurn = false; // Réinitialiser le flag
+      console.log(`[TOUR] ${currentPlayer.name} saute son tour !`);
+      
+      // Retourner un message pour informer que le tour est sauté
+      const skippedPlayer = { name: currentPlayer.name, id: currentPlayer.id };
+      
+      // Passer au joueur suivant
+      this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+      
+      return { skipped: true, skippedPlayer };
+    }
+    
+    return { skipped: false };
   }
 
   getCurrentPlayer() {
@@ -535,7 +561,17 @@ io.on('connection', (socket) => {
       });
       
       // Tour suivant seulement APRÈS avoir pioché
-      game.nextTurn();
+      const turnResult = game.nextTurn();
+      
+      const nextPlayer = game.getCurrentPlayer();
+      console.log(`[TOUR] Passage au joueur: ${nextPlayer.name} (ID: ${nextPlayer.id})`);
+      
+      // Si un joueur a sauté son tour, envoyer un message
+      if (turnResult.skipped) {
+        io.to(playerInfo.roomId).emit('player-skipped-turn', {
+          playerName: turnResult.skippedPlayer.name
+        });
+      }
       
       // Vérifier si la partie est terminée
       if (game.isGameOver()) {
@@ -545,9 +581,13 @@ io.on('connection', (socket) => {
           finalScores: game.players.map(p => ({ name: p.name, smiles: p.smiles }))
         });
       } else {
+        const updatedGameState = game.getPublicGameState();
+        console.log(`[TOUR] Index joueur actuel: ${updatedGameState.currentPlayerIndex}`);
+        
         io.to(playerInfo.roomId).emit('turn-changed', {
-          currentPlayerId: game.getCurrentPlayer().id,
-          currentPlayerName: game.getCurrentPlayer().name
+          currentPlayerId: nextPlayer.id,
+          currentPlayerName: nextPlayer.name,
+          gameState: updatedGameState
         });
       }
     } else {

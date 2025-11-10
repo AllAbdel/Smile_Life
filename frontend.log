@@ -2,9 +2,9 @@
 > smile-life-frontend@1.0.0 start
 > react-scripts start
 
-(node:11020) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(node:9812) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
 (Use `node --trace-deprecation ...` to show where the warning was created)
-(node:11020) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(node:9812) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
 Starting the development server...
 
 Compiled successfully!
@@ -16,10 +16,4 @@ You can now view smile-life-frontend in the browser.
 Note that the development build is not optimized.
 To create a production build, use npm run build.
 
-webpack compiled [1m[32msuccessfully[39m[22m
-Compiling...
-Compiled successfully!
-webpack compiled [1m[32msuccessfully[39m[22m
-Compiling...
-Compiled successfully!
 webpack compiled [1m[32msuccessfully[39m[22m

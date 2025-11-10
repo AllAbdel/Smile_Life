@@ -222,7 +222,8 @@ Votre fichier JSON doit contenir un objet avec une clé `cards` qui contient un 
 
 - `"divorce"` : Force le divorce (perte du mariage, mais garde enfants et flirts)
 - `"fired"` : Licenciement (perte du métier et de tous les salaires)
-- `"accident"` : Perte directe de smiles (utiliser `smilesLoss`)
+- `"accident"` : Perte directe de smiles (utiliser `smilesLoss`) + **saute le prochain tour**
+- `"skip_turn"` : Fait sauter le prochain tour du joueur (sans perte de smiles)
 
 Exemples :
 ```json
@@ -255,9 +256,20 @@ Exemples :
   "type": "malus",
   "effect": "accident",
   "smilesLoss": 2,
-  "description": "Accident: -2 smiles",
+  "description": "Accident: -2 smiles et saute le prochain tour",
   "image": "🚗💥",
   "quantity": 5
+}
+
+// Maladie (saute juste le tour sans perte de smiles)
+{
+  "id": "malus-maladie",
+  "name": "Grippe",
+  "type": "malus",
+  "effect": "skip_turn",
+  "description": "Maladie: saute le prochain tour",
+  "image": "🤒",
+  "quantity": 4
 }
 ```
 

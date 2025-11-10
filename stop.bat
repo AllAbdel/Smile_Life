@@ -1,7 +1,5 @@
 @echo off
-echo ╔════════════════════════════════════════╗
-echo ║    🛑 Arret de Smile Life...          ║
-echo ╚════════════════════════════════════════╝
+echo  Arret de Smile Life...
 echo.
 
 echo Arret du serveur Node.js...
@@ -11,6 +9,6 @@ echo Arret des processus npm...
 taskkill /F /IM npm.cmd >nul 2>&1
 
 echo.
-echo ✅ Serveurs arretes !
+echo Serveurs arretes !
 echo.
 timeout /t 2 >nul

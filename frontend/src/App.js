@@ -73,13 +73,34 @@ function App() {
 
     newSocket.on('card-played', ({ playerId, playerName, message, gameState }) => {
       setGameData(gameState);
+      
+      // Mettre à jour les données du joueur local si c'est lui qui a joué
+      if (playerId === newSocket.id) {
+        const updatedPlayer = gameState.players.find(p => p.id === playerId);
+        if (updatedPlayer) {
+          setPlayerData(prev => ({
+            ...prev,
+            studies: updatedPlayer.studies,
+            job: updatedPlayer.job,
+            married: updatedPlayer.married,
+            smiles: updatedPlayer.smiles,
+            playedCards: updatedPlayer.playedCards
+          }));
+        }
+      }
+      
       addSystemMessage(`${playerName}: ${message}`);
       setSelectedCardIndex(null);
       setSelectedTarget(null);
     });
 
-    newSocket.on('turn-changed', ({ currentPlayerId, currentPlayerName }) => {
+    newSocket.on('turn-changed', ({ currentPlayerId, currentPlayerName, gameState }) => {
+      setGameData(gameState); // IMPORTANT : Mettre à jour l'état complet du jeu
       addSystemMessage(`C'est au tour de ${currentPlayerName}`);
+    });
+
+    newSocket.on('player-skipped-turn', ({ playerName }) => {
+      addSystemMessage(`⏭️ ${playerName} saute son tour !`);
     });
 
     newSocket.on('game-update', ({ gameState }) => {
@@ -319,25 +340,28 @@ function App() {
             <div className="opponents-area">
               {gameData?.players
                 .filter(p => p.id !== playerData?.id)
-                .map(player => (
-                  <div 
-                    key={player.id} 
-                    className={`opponent-card ${selectedTarget === player.id ? 'selected' : ''}`}
-                    onClick={() => setSelectedTarget(player.id)}
-                  >
-                    <div className="opponent-header">
-                      <strong>{player.name}</strong>
-                      <span className="smiles">😊 {player.smiles}</span>
+                .map(player => {
+                  const isCurrentPlayer = gameData.players[gameData.currentPlayerIndex]?.id === player.id;
+                  return (
+                    <div 
+                      key={player.id} 
+                      className={`opponent-card ${selectedTarget === player.id ? 'selected' : ''} ${isCurrentPlayer ? 'current-turn' : ''}`}
+                      onClick={() => setSelectedTarget(player.id)}
+                    >
+                      <div className="opponent-header">
+                        <strong>{player.name} {isCurrentPlayer && '🎯'}</strong>
+                        <span className="smiles">😊 {player.smiles}</span>
+                      </div>
+                      <div className="opponent-info">
+                        <span>🎴 {player.handSize}</span>
+                        <span>📚 {player.studies}</span>
+                        {player.job && <span title={player.job.name}>💼 {getCardEmoji(player.job)}</span>}
+                        {player.married && <span>💒</span>}
+                        <span>👶 {player.children.length}</span>
+                      </div>
                     </div>
-                    <div className="opponent-info">
-                      <span>🎴 {player.handSize}</span>
-                      <span>📚 {player.studies}</span>
-                      {player.job && <span>{getCardEmoji(player.job)}</span>}
-                      {player.married && <span>💒</span>}
-                      <span>👶 {player.children.length}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
 
             {/* Zone centrale */}
@@ -385,16 +409,21 @@ function App() {
             </div>
 
             {/* Votre zone de jeu */}
-            <div className="player-area">
+            <div className={`player-area ${isMyTurn() ? 'my-turn' : ''}`}>
               <div className="player-header">
-                <h3>{playerData?.name}</h3>
+                <h3>{playerData?.name} {isMyTurn() && '🎯 (Votre tour)'}</h3>
                 <span className="smiles-big">😊 {playerData?.smiles} Smiles</span>
               </div>
 
               <div className="player-stats">
                 <div className="stat">📚 Études: {playerData?.studies}</div>
                 {playerData?.job && (
-                  <div className="stat">{getCardEmoji(playerData.job)} {playerData.job.name}</div>
+                  <div className="stat stat-job">
+                    💼 Métier: {getCardEmoji(playerData.job)} {playerData.job.name}
+                  </div>
+                )}
+                {!playerData?.job && (
+                  <div className="stat stat-no-job">💼 Pas de métier</div>
                 )}
                 {playerData?.married && <div className="stat">💒 Marié(e)</div>}
                 <div className="stat">❤️ Flirts: {playerData?.flirts.length}/5</div>
@@ -408,9 +437,14 @@ function App() {
                 <h4>Cartes jouées</h4>
                 <div className="cards-grid">
                   {playerData?.playedCards.map((card, index) => (
-                    <div key={index} className={`mini-card ${card.isMalus ? 'malus' : ''}`} title={card.description}>
+                    <div 
+                      key={index} 
+                      className={`mini-card ${card.isMalus ? 'malus' : ''} ${card.type === 'job' ? 'job-card' : ''}`} 
+                      title={card.description}
+                    >
                       <div className="card-emoji">{getCardEmoji(card)}</div>
                       <div className="card-name">{card.name}</div>
+                      {card.smiles > 0 && <div className="card-mini-smiles">😊 {card.smiles}</div>}
                     </div>
                   ))}
                 </div>
