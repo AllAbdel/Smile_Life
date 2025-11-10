@@ -511,6 +511,8 @@ io.on('connection', (socket) => {
     const result = game.playCard(socket.id, cardIndex, targetPlayerId, action);
     
     if (result.success) {
+      const player = game.players.find(p => p.id === socket.id);
+      
       io.to(playerInfo.roomId).emit('card-played', {
         playerId: socket.id,
         playerName: playerInfo.playerName,
@@ -518,16 +520,36 @@ io.on('connection', (socket) => {
         gameState: game.getPublicGameState()
       });
       
+      // Piocher automatiquement jusqu'à avoir 5 cartes
+      while (player.hand.length < 5 && game.deck.length > 0) {
+        const drawnCard = game.drawCard(socket.id);
+        if (!drawnCard) break;
+      }
+      
       socket.emit('hand-update', {
         hand: game.getPlayerData(socket.id).hand
       });
       
-      // Tour suivant
-      game.nextTurn();
-      io.to(playerInfo.roomId).emit('turn-changed', {
-        currentPlayerId: game.getCurrentPlayer().id,
-        currentPlayerName: game.getCurrentPlayer().name
+      io.to(playerInfo.roomId).emit('game-update', {
+        gameState: game.getPublicGameState()
       });
+      
+      // Tour suivant seulement APRÈS avoir pioché
+      game.nextTurn();
+      
+      // Vérifier si la partie est terminée
+      if (game.isGameOver()) {
+        const winner = game.getWinner();
+        io.to(playerInfo.roomId).emit('game-over', {
+          winner: winner.name,
+          finalScores: game.players.map(p => ({ name: p.name, smiles: p.smiles }))
+        });
+      } else {
+        io.to(playerInfo.roomId).emit('turn-changed', {
+          currentPlayerId: game.getCurrentPlayer().id,
+          currentPlayerName: game.getCurrentPlayer().name
+        });
+      }
     } else {
       socket.emit('error', { message: result.message });
     }

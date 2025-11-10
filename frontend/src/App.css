@@ -378,6 +378,17 @@ body {
   margin-top: 20px;
 }
 
+.turn-message {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 15px;
+  animation: pulse 2s infinite;
+}
+
 .action-selector {
   margin-top: 15px;
   display: flex;

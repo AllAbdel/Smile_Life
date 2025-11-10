@@ -5,7 +5,7 @@ import './App.css';
 // Détection automatique de l'adresse du serveur
 // Si tu veux forcer une IP spécifique, remplace par: 'http://TON_IP:3001'
 const SOCKET_URL = window.location.hostname === 'localhost' 
-  ? 'http://192.168.1.177:3001'
+  ? 'http://localhost:3001'
   : `http://${window.location.hostname}:3001`;
 
 function App() {
@@ -360,9 +360,9 @@ function App() {
 
               {isMyTurn() && (
                 <div className="actions">
-                  <button onClick={drawCard} className="btn btn-primary">
-                    Piocher une carte
-                  </button>
+                  <div className="turn-message">
+                    ✨ C'est votre tour ! Sélectionnez une carte et jouez-la.
+                  </div>
                   
                   {selectedCardIndex !== null && (
                     <div className="action-selector">
