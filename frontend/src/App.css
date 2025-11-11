@@ -312,6 +312,32 @@ body {
   font-size: 1.2em;
 }
 
+.opponent-details {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.opponent-stat {
+  background: #f5f5f5;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 0.9em;
+}
+
+.opponent-job {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: white;
+  font-weight: bold;
+}
+
+.opponent-no-job {
+  background: #e0e0e0;
+  color: #999;
+  font-style: italic;
+}
+
 .smiles {
   background: #FFD700;
   padding: 5px 10px;
@@ -470,6 +496,26 @@ body {
   background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
   color: white;
   font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.resign-btn {
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px solid white;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.3s;
+}
+
+.resign-btn:hover {
+  background: rgba(255, 82, 82, 0.8);
+  transform: scale(1.1);
 }
 
 .stat-no-job {
@@ -587,6 +633,17 @@ body {
   font-weight: bold;
 }
 
+.card-cost {
+  background: #ff5252;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 15px;
+  display: inline-block;
+  margin: 5px 0;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
 .card-desc {
   font-size: 0.85em;
   color: #666;
@@ -675,12 +732,37 @@ body {
   background: #f5f5f5;
   border-radius: 10px;
   font-size: 1.2em;
+  transition: all 0.3s;
+}
+
+.score-item.rank-1 {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: white;
+  font-weight: bold;
+  transform: scale(1.05);
+}
+
+.score-item.rank-2 {
+  background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);
+  font-weight: bold;
+}
+
+.score-item.rank-3 {
+  background: linear-gradient(135deg, #CD7F32 0%, #B8733E 100%);
+  color: white;
+  font-weight: bold;
 }
 
 .rank {
   font-weight: bold;
   color: #667eea;
   font-size: 1.5em;
+}
+
+.score-item.rank-1 .rank,
+.score-item.rank-2 .rank,
+.score-item.rank-3 .rank {
+  color: inherit;
 }
 
 .player-name {
@@ -693,6 +775,56 @@ body {
   padding: 8px 15px;
   border-radius: 20px;
   font-weight: bold;
+}
+
+.score-item.rank-1 .score {
+  background: white;
+  color: #FFD700;
+}
+
+/* Stats section */
+.stats-section {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 15px;
+}
+
+.stats-section h3 {
+  text-align: center;
+  color: #667eea;
+  margin-bottom: 20px;
+}
+
+.stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.stat-emoji {
+  font-size: 1.5em;
+}
+
+.stat-label {
+  font-weight: bold;
+  color: #667eea;
+  min-width: 180px;
+}
+
+.stat-values {
+  flex: 1;
+  color: #333;
 }
 
 /* Responsive */
@@ -715,4 +847,76 @@ body {
   .card-hand {
     min-width: 120px;
   }
+}
+
+/* Boutons flottants */
+.float-btn {
+  position: fixed;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  font-size: 2em;
+  cursor: pointer;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s;
+  z-index: 999;
+}
+
+.float-btn:hover {
+  transform: scale(1.1);
+}
+
+.float-btn-docs {
+  bottom: 80px;
+  right: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.float-btn-media {
+  bottom: 150px;
+  right: 20px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* Configuration serveur */
+.server-config {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 10px;
+}
+
+.server-config-btn {
+  width: 100%;
+  padding: 12px;
+  background: white;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  color: #667eea;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.server-config-btn:hover {
+  background: #667eea;
+  color: white;
+}
+
+.server-config-panel {
+  margin-top: 15px;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+}
+
+.server-config-panel p {
+  margin-bottom: 10px;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.server-config-panel .btn {
+  margin-top: 10px;
 }

@@ -1,15 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import './App.css';
+import Documentation from './Documentation';
+import MediaPanel from './MediaPanel';
 
 // Détection automatique de l'adresse du serveur
 // Si tu veux forcer une IP spécifique, remplace par: 'http://TON_IP:3001'
-const SOCKET_URL = window.location.hostname === 'localhost' 
+const DEFAULT_SOCKET_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:3001'
   : `http://${window.location.hostname}:3001`;
 
 function App() {
   const [socket, setSocket] = useState(null);
+  const [serverUrl, setServerUrl] = useState(DEFAULT_SOCKET_URL);
+  const [customServerUrl, setCustomServerUrl] = useState('');
+  const [showServerConfig, setShowServerConfig] = useState(false);
   const [gameState, setGameState] = useState('menu'); // menu, lobby, playing, gameover
   const [playerName, setPlayerName] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -23,11 +28,15 @@ function App() {
   const [selectedTarget, setSelectedTarget] = useState(null);
   const [error, setError] = useState('');
   const [customCards, setCustomCards] = useState(null);
+  const [showDocs, setShowDocs] = useState(false);
+  const [showMedia, setShowMedia] = useState(false);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [currentMusic, setCurrentMusic] = useState(null);
   
   const chatEndRef = useRef(null);
 
   useEffect(() => {
-    const newSocket = io(SOCKET_URL);
+    const newSocket = io(serverUrl);
     setSocket(newSocket);
 
     newSocket.on('game-created', ({ roomId, gameState, playerData }) => {
@@ -62,8 +71,13 @@ function App() {
       addSystemMessage('La partie commence !');
     });
 
-    newSocket.on('hand-update', ({ hand }) => {
-      setPlayerData(prev => ({ ...prev, hand }));
+    newSocket.on('hand-update', ({ hand, playerState }) => {
+      setPlayerData(prev => {
+        if (playerState) {
+          return { ...playerState, hand };
+        }
+        return { ...prev, hand };
+      });
     });
 
     newSocket.on('card-drawn', ({ card, hand }) => {
@@ -103,14 +117,31 @@ function App() {
       addSystemMessage(`⏭️ ${playerName} saute son tour !`);
     });
 
-    newSocket.on('game-update', ({ gameState }) => {
-      setGameData(gameState);
+    newSocket.on('sound-played', ({ soundFile, soundName, playerName }) => {
+      // Jouer le son reçu d'un autre joueur
+      const audio = new Audio(soundFile);
+      audio.play().catch(err => console.log('Erreur lecture son:', err));
+      addSystemMessage(`🔊 ${playerName} a joué: ${soundName}`);
     });
 
-    newSocket.on('game-over', ({ winner, finalScores }) => {
+    newSocket.on('game-update', ({ gameState }) => {
+      setGameData(gameState);
+      
+      // Mettre à jour aussi les données du joueur local
+      const localPlayer = gameState.players.find(p => p.id === newSocket.id);
+      if (localPlayer) {
+        setPlayerData(prev => ({
+          ...prev,
+          ...localPlayer,
+          hand: prev.hand // Garder la main actuelle
+        }));
+      }
+    });
+
+    newSocket.on('game-over', ({ winner, finalScores, stats }) => {
       setGameState('gameover');
       addSystemMessage(`🏆 ${winner} a gagné !`);
-      setGameData(prev => ({ ...prev, finalScores }));
+      setGameData(prev => ({ ...prev, finalScores, stats }));
     });
 
     newSocket.on('chat-message', ({ playerName, message, timestamp }) => {
@@ -123,7 +154,7 @@ function App() {
     });
 
     return () => newSocket.close();
-  }, []);
+  }, [serverUrl]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -204,6 +235,18 @@ function App() {
     }
   };
 
+  const changeServerUrl = () => {
+    if (customServerUrl.trim()) {
+      let url = customServerUrl.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'http://' + url;
+      }
+      setServerUrl(url);
+      setShowServerConfig(false);
+      setCustomServerUrl('');
+    }
+  };
+
   const isMyTurn = () => {
     if (!gameData || !playerData) return false;
     const currentPlayer = gameData.players[gameData.currentPlayerIndex];
@@ -228,6 +271,42 @@ function App() {
           <h1 className="title">😊 Smile Life 😊</h1>
           <div className="menu-card">
             <h2>Bienvenue !</h2>
+            
+            {/* Configuration serveur */}
+            <div className="server-config">
+              <button 
+                className="server-config-btn" 
+                onClick={() => setShowServerConfig(!showServerConfig)}
+              >
+                🌐 Serveur: {serverUrl.replace('http://', '')}
+              </button>
+              
+              {showServerConfig && (
+                <div className="server-config-panel">
+                  <p>Pour jouer en ligne ou via ngrok :</p>
+                  <input
+                    type="text"
+                    placeholder="Ex: abc123.ngrok.io:3001"
+                    value={customServerUrl}
+                    onChange={(e) => setCustomServerUrl(e.target.value)}
+                    className="input"
+                  />
+                  <button onClick={changeServerUrl} className="btn btn-success">
+                    Changer le serveur
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setServerUrl(DEFAULT_SOCKET_URL);
+                      setShowServerConfig(false);
+                    }} 
+                    className="btn btn-secondary"
+                  >
+                    Réinitialiser (local)
+                  </button>
+                </div>
+              )}
+            </div>
+
             <input
               type="text"
               placeholder="Votre nom"
@@ -322,6 +401,18 @@ function App() {
   if (gameState === 'playing') {
     return (
       <div className="App game-view">
+        {/* Panneaux latéraux */}
+        {showDocs && <Documentation onClose={() => setShowDocs(false)} />}
+        {showMedia && <MediaPanel onClose={() => setShowMedia(false)} socket={socket} />}
+        
+        {/* Boutons flottants */}
+        <button className="float-btn float-btn-docs" onClick={() => setShowDocs(!showDocs)} title="Guide du jeu">
+          📖
+        </button>
+        <button className="float-btn float-btn-media" onClick={() => setShowMedia(!showMedia)} title="Musique & Sons">
+          🎬
+        </button>
+        
         <div className="game-header">
           <h1>😊 Smile Life - Partie {roomId}</h1>
           <div className="turn-indicator">
@@ -352,12 +443,21 @@ function App() {
                         <strong>{player.name} {isCurrentPlayer && '🎯'}</strong>
                         <span className="smiles">😊 {player.smiles}</span>
                       </div>
-                      <div className="opponent-info">
-                        <span>🎴 {player.handSize}</span>
-                        <span>📚 {player.studies}</span>
-                        {player.job && <span title={player.job.name}>💼 {getCardEmoji(player.job)}</span>}
-                        {player.married && <span>💒</span>}
-                        <span>👶 {player.children.length}</span>
+                      <div className="opponent-details">
+                        <div className="opponent-stat">🎴 Main: {player.handSize}</div>
+                        <div className="opponent-stat">📚 Études: {player.studies}</div>
+                        {player.job ? (
+                          <div className="opponent-stat opponent-job" title={player.job.description}>
+                            💼 {player.job.name} (Sal. max: Niv.{player.job.maxSalaryLevel || 1})
+                          </div>
+                        ) : (
+                          <div className="opponent-stat opponent-no-job">💼 Pas de métier</div>
+                        )}
+                        <div className="opponent-stat">💰 Salaires: {player.salaryCount}</div>
+                        <div className="opponent-stat">❤️ Flirts: {player.flirts.length}/5</div>
+                        {player.married && <div className="opponent-stat">💒 Marié(e)</div>}
+                        <div className="opponent-stat">👶 Enfants: {player.children.length}</div>
+                        <div className="opponent-stat">🐾 Animaux: {player.pets.length}</div>
                       </div>
                     </div>
                   );
@@ -418,8 +518,19 @@ function App() {
               <div className="player-stats">
                 <div className="stat">📚 Études: {playerData?.studies}</div>
                 {playerData?.job && (
-                  <div className="stat stat-job">
+                  <div className="stat stat-job" style={{position: 'relative'}}>
                     💼 Métier: {getCardEmoji(playerData.job)} {playerData.job.name}
+                    <button 
+                      onClick={() => {
+                        if (window.confirm(`Démissionner de ${playerData.job.name}?${playerData.job.canQuitInstantly ? '' : '\n⚠️ Vous sauterez votre prochain tour!'}`)) {
+                          socket.emit('resign-job');
+                        }
+                      }}
+                      className="resign-btn"
+                      title="Démissionner"
+                    >
+                      ❌
+                    </button>
                   </div>
                 )}
                 {!playerData?.job && (
@@ -464,6 +575,9 @@ function App() {
                       <div className="card-info">
                         <div className="card-name">{card.name}</div>
                         <div className="card-smiles">😊 {card.smiles || 0}</div>
+                        {card.type === 'travel' && card.cost && (
+                          <div className="card-cost">💰 Coût: {card.cost}</div>
+                        )}
                         <div className="card-desc">{card.description}</div>
                       </div>
                     </div>
@@ -508,23 +622,60 @@ function App() {
 
   // Rendu de fin de partie
   if (gameState === 'gameover') {
+    const renderStat = (statData, emoji, label) => {
+      if (!statData || statData.length === 0) return null;
+      return (
+        <div className="stat-item">
+          <span className="stat-emoji">{emoji}</span>
+          <span className="stat-label">{label}:</span>
+          <span className="stat-values">
+            {statData.map((p, i) => (
+              <span key={i}>{p.name} ({p.value}){i < statData.length - 1 && ', '}</span>
+            ))}
+          </span>
+        </div>
+      );
+    };
+
     return (
       <div className="App">
         <div className="container">
           <h1 className="title">🏆 Partie terminée 🏆</h1>
           <div className="gameover-card">
-            <h2>Scores finaux</h2>
+            <h2>🥇 Classement final</h2>
             <div className="scores-list">
-              {gameData?.finalScores
-                ?.sort((a, b) => b.smiles - a.smiles)
-                .map((score, index) => (
-                  <div key={index} className="score-item">
-                    <span className="rank">{index + 1}.</span>
-                    <span className="player-name">{score.name}</span>
-                    <span className="score">😊 {score.smiles}</span>
-                  </div>
-                ))}
+              {gameData?.finalScores?.map((score, index) => (
+                <div key={index} className={`score-item rank-${index + 1}`}>
+                  <span className="rank">
+                    {index === 0 && '🥇'}
+                    {index === 1 && '🥈'}
+                    {index === 2 && '🥉'}
+                    {index > 2 && `${index + 1}.`}
+                  </span>
+                  <span className="player-name">{score.name}</span>
+                  <span className="score">😊 {score.smiles}</span>
+                </div>
+              ))}
             </div>
+
+            {gameData?.stats && (
+              <div className="stats-section">
+                <h3>📊 Statistiques de la partie</h3>
+                <div className="stats-grid">
+                  {renderStat(gameData.stats.mostMalus, '💔', 'Plus de malus subis')}
+                  {renderStat(gameData.stats.mostStudies, '📚', 'Plus haut niveau d\'études')}
+                  {renderStat(gameData.stats.mostSalaryEnd, '💰', 'Plus de salaires à la fin')}
+                  {renderStat(gameData.stats.mostSalaryTotal, '💵', 'Plus de salaires total')}
+                  {renderStat(gameData.stats.mostTravels, '✈️', 'Plus de voyages')}
+                  {renderStat(gameData.stats.mostFlirts, '❤️', 'Plus de flirts')}
+                  {renderStat(gameData.stats.mostChildren, '👶', 'Plus d\'enfants')}
+                  {renderStat(gameData.stats.mostPets, '🐾', 'Plus d\'animaux')}
+                  {renderStat(gameData.stats.mostJobs, '💼', 'Plus de métiers')}
+                  {renderStat(gameData.stats.mostMarriages, '💒', 'Plus de mariages')}
+                </div>
+              </div>
+            )}
+            
             <button 
               onClick={() => window.location.reload()} 
               className="btn btn-primary"

@@ -51,10 +51,12 @@ class Game {
       job: null,
       flirts: [],
       married: false,
+      adultery: false,
       children: [],
       pets: [],
       salary: [],
-      skipNextTurn: false
+      skipNextTurn: false,
+      hasTakenFromDiscard: false
     });
     return true;
   }
@@ -172,10 +174,36 @@ class Game {
     // Logique pour appliquer les effets de la carte
     switch (card.type) {
       case 'study':
+        // Vérifier si le joueur a un métier qui ne permet pas d'étudier
+        if (player.job && !player.job.canStudyWhileWorking) {
+          return { success: false, message: "Vous devez démissionner pour reprendre vos études" };
+        }
+        
         player.studies += card.studyLevel || 1;
         player.playedCards.push(card);
         player.smiles += card.smiles || 0;
         return { success: true, message: `${player.name} a gagné ${card.studyLevel} niveaux d'études` };
+      
+      case 'resign':
+        // Démissionner de son métier
+        if (!player.job) {
+          return { success: false, message: "Vous n'avez pas de métier" };
+        }
+        
+        const canQuitInstantly = player.job.canQuitInstantly || false;
+        
+        // Retirer le métier et les salaires
+        player.playedCards = player.playedCards.filter(c => c.id !== player.job.id);
+        player.job = null;
+        player.salary = [];
+        
+        // Si le métier ne peut pas être quitté instantanément, sauter le prochain tour
+        if (!canQuitInstantly) {
+          player.skipNextTurn = true;
+          return { success: true, message: `${player.name} a démissionné et saute son prochain tour` };
+        }
+        
+        return { success: true, message: `${player.name} a démissionné` };
       
       case 'job':
         if (player.studies >= (card.requiredStudies || 0)) {
@@ -194,6 +222,17 @@ class Game {
           return { success: false, message: "Niveau d'études insuffisant" };
         }
       
+      case 'adultery':
+        if (!player.married) {
+          return { success: false, message: "Vous devez être marié(e) pour commettre un adultère" };
+        }
+        if (player.adultery) {
+          return { success: false, message: "Vous êtes déjà en situation d'adultère" };
+        }
+        player.adultery = true;
+        player.playedCards.push(card);
+        return { success: true, message: `${player.name} peut maintenant flirter en étant marié(e) !` };
+      
       case 'flirt':
         if (player.married && !player.adultery) {
           return { success: false, message: "Vous êtes marié(e), impossible de flirter" };
@@ -202,22 +241,47 @@ class Game {
           return { success: false, message: "Maximum 5 flirts atteints" };
         }
         
-        // Vérifier si un autre joueur a un flirt au même endroit
+        // Vérifier si un autre joueur a ce lieu comme DERNIER flirt
+        let stolenFlirt = null;
+        let victimPlayer = null;
+        
         this.players.forEach(otherPlayer => {
-          if (otherPlayer.id !== player.id) {
-            const sameLocationFlirt = otherPlayer.flirts.findIndex(f => f.location === card.location);
-            if (sameLocationFlirt !== -1) {
-              // Voler le flirt
-              const stolenFlirt = otherPlayer.flirts.splice(sameLocationFlirt, 1)[0];
-              player.flirts.push(stolenFlirt);
+          if (otherPlayer.id !== player.id && otherPlayer.flirts.length > 0) {
+            const lastFlirt = otherPlayer.flirts[otherPlayer.flirts.length - 1];
+            if (lastFlirt.location === card.location) {
+              // Voler le dernier flirt
+              stolenFlirt = otherPlayer.flirts.pop();
+              victimPlayer = otherPlayer;
+              
+              // Retirer les smiles du flirt volé à la victime
+              otherPlayer.smiles = Math.max(0, otherPlayer.smiles - (stolenFlirt.smiles || 1));
+              
+              // Retirer aussi de ses cartes jouées
+              const flirtIndex = otherPlayer.playedCards.findIndex(c => c.id === stolenFlirt.id && c.location === stolenFlirt.location);
+              if (flirtIndex !== -1) {
+                otherPlayer.playedCards.splice(flirtIndex, 1);
+              }
             }
           }
         });
         
+        // Ajouter le nouveau flirt
         player.flirts.push(card);
         player.playedCards.push(card);
         player.smiles += card.smiles || 0;
-        return { success: true, message: `${player.name} flirte à ${card.location}` };
+        
+        // Si flirt volé, l'ajouter aussi
+        if (stolenFlirt) {
+          player.flirts.push(stolenFlirt);
+          player.playedCards.push(stolenFlirt);
+          player.smiles += stolenFlirt.smiles || 1;
+        }
+        
+        const message = stolenFlirt 
+          ? `${player.name} flirte à ${card.location} et vole le flirt de ${victimPlayer.name} ! (+${(card.smiles || 0) + (stolenFlirt.smiles || 0)} smiles)`
+          : `${player.name} flirte à ${card.location}`;
+        
+        return { success: true, message };
       
       case 'marriage':
         if (player.flirts.length === 0) {
@@ -250,10 +314,17 @@ class Game {
         if (!player.job) {
           return { success: false, message: "Vous devez avoir un métier" };
         }
+        const salaryLevel = card.salaryLevel || 1;
+        const maxSalaryLevel = player.job.maxSalaryLevel || 1;
+        
+        if (salaryLevel > maxSalaryLevel) {
+          return { success: false, message: `Votre métier ne permet que les salaires jusqu'au niveau ${maxSalaryLevel}` };
+        }
+        
         player.salary.push(card);
         player.playedCards.push(card);
         player.smiles += card.smiles || 0;
-        return { success: true, message: `${player.name} a reçu un salaire` };
+        return { success: true, message: `${player.name} a reçu un salaire niveau ${salaryLevel}` };
       
       case 'travel':
         const cost = card.cost || 0;
@@ -270,6 +341,14 @@ class Game {
       
       case 'malus':
         if (isNegative) {
+          // Vérifier les conditions selon le type de malus
+          if (card.effect === 'divorce' && !player.married) {
+            return { success: false, message: `${player.name} n'est pas marié(e)` };
+          }
+          if (card.effect === 'fired' && !player.job) {
+            return { success: false, message: `${player.name} n'a pas de métier` };
+          }
+          
           // Appliquer le malus
           this.applyMalus(card, player);
           player.playedCards.push({ ...card, isMalus: true });
@@ -289,7 +368,22 @@ class Game {
       case 'divorce':
         if (player.married) {
           player.married = false;
+          const marriageCard = player.playedCards.find(c => c.type === 'marriage');
           player.playedCards = player.playedCards.filter(c => c.type !== 'marriage');
+          
+          // Perte de smiles du mariage
+          const marriageSmiles = marriageCard ? (marriageCard.smiles || 5) : 5;
+          player.smiles = Math.max(0, player.smiles - marriageSmiles);
+          
+          // Si en adultère, perdre TOUS les enfants et leurs smiles
+          if (player.adultery) {
+            const childrenSmiles = player.children.reduce((sum, child) => sum + (child.smiles || 3), 0);
+            player.smiles = Math.max(0, player.smiles - childrenSmiles);
+            player.children = [];
+            player.playedCards = player.playedCards.filter(c => c.type !== 'child');
+            player.adultery = false; // Fin de l'adultère
+            player.playedCards = player.playedCards.filter(c => c.type !== 'adultery');
+          }
         }
         break;
       
@@ -318,8 +412,11 @@ class Game {
   nextTurn() {
     this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
     
-    // Si le joueur suivant doit sauter son tour
+    // Réinitialiser le flag de défausse pour le nouveau joueur
     const currentPlayer = this.players[this.currentPlayerIndex];
+    currentPlayer.hasTakenFromDiscard = false;
+    
+    // Si le joueur suivant doit sauter son tour
     if (currentPlayer.skipNextTurn) {
       currentPlayer.skipNextTurn = false; // Réinitialiser le flag
       console.log(`[TOUR] ${currentPlayer.name} saute son tour !`);
@@ -329,6 +426,9 @@ class Game {
       
       // Passer au joueur suivant
       this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+      
+      // Réinitialiser le flag pour le joueur suivant aussi
+      this.players[this.currentPlayerIndex].hasTakenFromDiscard = false;
       
       return { skipped: true, skippedPlayer };
     }
@@ -383,6 +483,40 @@ class Game {
     return this.players.reduce((max, player) => 
       player.smiles > max.smiles ? player : max
     , this.players[0]);
+  }
+
+  calculateStats() {
+    const stats = {
+      mostMalus: [],
+      mostStudies: [],
+      mostSalaryEnd: [],
+      mostSalaryTotal: [],
+      mostTravels: [],
+      mostFlirts: [],
+      mostChildren: [],
+      mostPets: [],
+      mostJobs: [],
+      mostMarriages: []
+    };
+
+    // Calculer chaque stat
+    const calcMax = (field, countFn) => {
+      const max = Math.max(...this.players.map(countFn));
+      return this.players.filter(p => countFn(p) === max && max > 0).map(p => ({ name: p.name, value: max }));
+    };
+
+    stats.mostMalus = calcMax('malus', p => p.playedCards.filter(c => c.isMalus).length);
+    stats.mostStudies = calcMax('studies', p => p.studies);
+    stats.mostSalaryEnd = calcMax('salary', p => p.salary.length);
+    stats.mostSalaryTotal = calcMax('salaryTotal', p => p.playedCards.filter(c => c.type === 'salary').length);
+    stats.mostTravels = calcMax('travels', p => p.playedCards.filter(c => c.type === 'travel').length);
+    stats.mostFlirts = calcMax('flirts', p => p.flirts.length);
+    stats.mostChildren = calcMax('children', p => p.children.length);
+    stats.mostPets = calcMax('pets', p => p.pets.length);
+    stats.mostJobs = calcMax('jobs', p => p.playedCards.filter(c => c.type === 'job').length);
+    stats.mostMarriages = calcMax('marriages', p => p.playedCards.filter(c => c.type === 'marriage').length);
+
+    return stats;
   }
 }
 
@@ -553,12 +687,25 @@ io.on('connection', (socket) => {
       }
       
       socket.emit('hand-update', {
-        hand: game.getPlayerData(socket.id).hand
+        hand: game.getPlayerData(socket.id).hand,
+        playerState: game.getPlayerData(socket.id)
       });
       
       io.to(playerInfo.roomId).emit('game-update', {
         gameState: game.getPublicGameState()
       });
+      
+      // Vérifier si la partie est terminée (pioche vide)
+      if (game.deck.length === 0) {
+        const stats = game.calculateStats();
+        const winner = game.getWinner();
+        io.to(playerInfo.roomId).emit('game-over', {
+          winner: winner.name,
+          finalScores: game.players.map(p => ({ name: p.name, smiles: p.smiles })).sort((a, b) => b.smiles - a.smiles),
+          stats: stats
+        });
+        return;
+      }
       
       // Tour suivant seulement APRÈS avoir pioché
       const turnResult = game.nextTurn();
@@ -609,6 +756,11 @@ io.on('connection', (socket) => {
       return;
     }
     
+    if (currentPlayer.hasTakenFromDiscard) {
+      socket.emit('error', { message: 'Vous avez déjà pris une carte de la défausse ce tour' });
+      return;
+    }
+    
     if (game.discardPile.length === 0) {
       socket.emit('error', { message: 'La défausse est vide' });
       return;
@@ -616,6 +768,7 @@ io.on('connection', (socket) => {
     
     const card = game.discardPile.pop();
     currentPlayer.hand.push(card);
+    currentPlayer.hasTakenFromDiscard = true; // Marquer qu'il a pris
     
     socket.emit('card-taken-from-discard', {
       card,
@@ -624,6 +777,67 @@ io.on('connection', (socket) => {
     
     io.to(playerInfo.roomId).emit('game-update', {
       gameState: game.getPublicGameState()
+    });
+  });
+
+  // Démissionner
+  socket.on('resign-job', () => {
+    const playerInfo = players.get(socket.id);
+    if (!playerInfo) return;
+    
+    const game = games.get(playerInfo.roomId);
+    if (!game || !game.gameStarted) return;
+    
+    const player = game.players.find(p => p.id === socket.id);
+    if (!player || !player.job) {
+      socket.emit('error', { message: 'Vous n\'avez pas de métier' });
+      return;
+    }
+    
+    const canQuitInstantly = player.job.canQuitInstantly || false;
+    const jobName = player.job.name;
+    
+    // Retirer le métier et les salaires
+    player.playedCards = player.playedCards.filter(c => c.id !== player.job.id);
+    player.job = null;
+    player.salary = [];
+    
+    // Si le métier ne peut pas être quitté instantanément, sauter le prochain tour
+    if (!canQuitInstantly) {
+      player.skipNextTurn = true;
+      io.to(playerInfo.roomId).emit('card-played', {
+        playerId: socket.id,
+        playerName: playerInfo.playerName,
+        message: `${playerInfo.playerName} a démissionné de ${jobName} et saute son prochain tour`,
+        gameState: game.getPublicGameState()
+      });
+      
+      // Passer au tour suivant
+      const turnResult = game.nextTurn();
+      if (turnResult.skipped) {
+        io.to(playerInfo.roomId).emit('player-skipped-turn', {
+          playerName: turnResult.skippedPlayer.name
+        });
+      }
+      
+      const nextPlayer = game.getCurrentPlayer();
+      io.to(playerInfo.roomId).emit('turn-changed', {
+        currentPlayerId: nextPlayer.id,
+        currentPlayerName: nextPlayer.name,
+        gameState: game.getPublicGameState()
+      });
+    } else {
+      io.to(playerInfo.roomId).emit('card-played', {
+        playerId: socket.id,
+        playerName: playerInfo.playerName,
+        message: `${playerInfo.playerName} a démissionné de ${jobName}`,
+        gameState: game.getPublicGameState()
+      });
+    }
+    
+    socket.emit('hand-update', {
+      hand: game.getPlayerData(socket.id).hand,
+      playerState: game.getPlayerData(socket.id)
     });
   });
 
@@ -636,6 +850,19 @@ io.on('connection', (socket) => {
       playerName: playerInfo.playerName,
       message,
       timestamp: Date.now()
+    });
+  });
+
+  // Jouer un son (soundboard synchronisé)
+  socket.on('play-sound', ({ soundFile, soundName }) => {
+    const playerInfo = players.get(socket.id);
+    if (!playerInfo) return;
+    
+    // Broadcast aux AUTRES joueurs (pas à soi-même)
+    socket.to(playerInfo.roomId).emit('sound-played', {
+      soundFile,
+      soundName,
+      playerName: playerInfo.playerName
     });
   });
 

@@ -52,12 +52,15 @@
     },
     {
       "id": "job-1",
-      "name": "Serveur",
+      "name": "Barman",
       "type": "job",
       "requiredStudies": 0,
+      "maxSalaryLevel": 1,
+      "canStudyWhileWorking": false,
+      "canQuitInstantly": true,
       "smiles": 1,
-      "description": "Métier: Serveur",
-      "image": "☕",
+      "description": "Métier: Barman | Études: 0 | Salaire max: Niv.1 | Démission instant.",
+      "image": "🍺",
       "quantity": 4
     },
     {
@@ -65,8 +68,11 @@
       "name": "Vendeur",
       "type": "job",
       "requiredStudies": 1,
+      "maxSalaryLevel": 1,
+      "canStudyWhileWorking": false,
+      "canQuitInstantly": true,
       "smiles": 2,
-      "description": "Métier: Vendeur",
+      "description": "Métier: Vendeur | Études: 1 | Salaire max: Niv.1 | Démission instant.",
       "image": "🛍️",
       "quantity": 4
     },
@@ -75,8 +81,11 @@
       "name": "Infirmier",
       "type": "job",
       "requiredStudies": 3,
+      "maxSalaryLevel": 2,
+      "canStudyWhileWorking": true,
+      "canQuitInstantly": false,
       "smiles": 3,
-      "description": "Métier: Infirmier",
+      "description": "Métier: Infirmier | Études: 3 | Salaire max: Niv.2 | Peut étudier | Démission saute tour",
       "image": "💉",
       "quantity": 3
     },
@@ -85,18 +94,24 @@
       "name": "Ingénieur",
       "type": "job",
       "requiredStudies": 5,
+      "maxSalaryLevel": 3,
+      "canStudyWhileWorking": true,
+      "canQuitInstantly": false,
       "smiles": 4,
-      "description": "Métier: Ingénieur",
+      "description": "Métier: Ingénieur | Études: 5 | Salaire max: Niv.3 | Peut étudier | Démission saute tour",
       "image": "⚙️",
       "quantity": 3
     },
     {
       "id": "job-5",
-      "name": "Médecin",
+      "name": "Chirurgien",
       "type": "job",
       "requiredStudies": 6,
+      "maxSalaryLevel": 4,
+      "canStudyWhileWorking": true,
+      "canQuitInstantly": false,
       "smiles": 5,
-      "description": "Métier: Médecin",
+      "description": "Métier: Chirurgien | Études: 6 | Salaire max: Niv.4 | Peut étudier | Démission saute tour",
       "image": "🩺",
       "quantity": 2
     },
@@ -105,8 +120,11 @@
       "name": "Avocat",
       "type": "job",
       "requiredStudies": 5,
+      "maxSalaryLevel": 3,
+      "canStudyWhileWorking": true,
+      "canQuitInstantly": false,
       "smiles": 4,
-      "description": "Métier: Avocat",
+      "description": "Métier: Avocat | Études: 5 | Salaire max: Niv.3 | Peut étudier | Démission saute tour",
       "image": "⚖️",
       "quantity": 2
     },
@@ -115,8 +133,11 @@
       "name": "Artiste",
       "type": "job",
       "requiredStudies": 2,
+      "maxSalaryLevel": 2,
+      "canStudyWhileWorking": false,
+      "canQuitInstantly": true,
       "smiles": 3,
-      "description": "Métier: Artiste",
+      "description": "Métier: Artiste | Études: 2 | Salaire max: Niv.2 | Démission instant.",
       "image": "🎨",
       "quantity": 3
     },
@@ -219,12 +240,43 @@
     },
     {
       "id": "salary-1",
-      "name": "Salaire",
+      "name": "Salaire Niveau 1",
       "type": "salary",
+      "salaryLevel": 1,
       "smiles": 1,
-      "description": "Vous recevez un salaire",
+      "description": "Salaire de niveau 1",
       "image": "💰",
       "quantity": 15
+    },
+    {
+      "id": "salary-2",
+      "name": "Salaire Niveau 2",
+      "type": "salary",
+      "salaryLevel": 2,
+      "smiles": 2,
+      "description": "Salaire de niveau 2 (vaut 2 salaires)",
+      "image": "💰",
+      "quantity": 10
+    },
+    {
+      "id": "salary-3",
+      "name": "Salaire Niveau 3",
+      "type": "salary",
+      "salaryLevel": 3,
+      "smiles": 3,
+      "description": "Salaire de niveau 3 (vaut 3 salaires)",
+      "image": "💰",
+      "quantity": 6
+    },
+    {
+      "id": "salary-4",
+      "name": "Salaire Niveau 4",
+      "type": "salary",
+      "salaryLevel": 4,
+      "smiles": 4,
+      "description": "Salaire de niveau 4 (vaut 4 salaires)",
+      "image": "💰",
+      "quantity": 4
     },
     {
       "id": "travel-1",
@@ -232,7 +284,7 @@
       "type": "travel",
       "cost": 2,
       "smiles": 3,
-      "description": "Voyage à Paris",
+      "description": "💰 Coût: 2 salaires | +3 smiles",
       "image": "🗼",
       "quantity": 3
     },
@@ -242,7 +294,7 @@
       "type": "travel",
       "cost": 4,
       "smiles": 5,
-      "description": "Voyage à Tokyo",
+      "description": "💰 Coût: 4 salaires | +5 smiles",
       "image": "🗾",
       "quantity": 2
     },
@@ -252,7 +304,7 @@
       "type": "travel",
       "cost": 3,
       "smiles": 4,
-      "description": "Voyage à New York",
+      "description": "💰 Coût: 3 salaires | +4 smiles",
       "image": "🗽",
       "quantity": 2
     },
@@ -262,7 +314,7 @@
       "type": "travel",
       "cost": 5,
       "smiles": 6,
-      "description": "Voyage aux Bahamas",
+      "description": "💰 Coût: 5 salaires | +6 smiles",
       "image": "🏝️",
       "quantity": 2
     },
@@ -330,7 +382,7 @@
       "name": "Chance",
       "type": "special",
       "smiles": 2,
-      "description": "Coup de chance!",
+      "description": "Coup de chance ! +2 smiles bonus",
       "image": "🍀",
       "quantity": 4
     },
@@ -339,7 +391,7 @@
       "name": "Anniversaire",
       "type": "special",
       "smiles": 1,
-      "description": "Joyeux anniversaire!",
+      "description": "Joyeux anniversaire ! +1 smile",
       "image": "🎂",
       "quantity": 4
     }
