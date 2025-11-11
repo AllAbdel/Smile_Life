@@ -17,37 +17,27 @@
       "studyLevel": 2,
       "smiles": 2,
       "description": "Niveau d'études: Bac+2",
-      "image": "📚",
+      "image": "🎓",
       "quantity": 6
     },
     {
       "id": "study-3",
       "name": "BAC+3",
       "type": "study",
-      "studyLevel": 1,
-      "smiles": 1,
+      "studyLevel": 3,
+      "smiles": 2,
       "description": "Niveau d'études: Bac+3",
-      "image": "📖",
-      "quantity": 6
+      "image": "🎓",
+      "quantity": 4
     },
     {
       "id": "study-4",
       "name": "BAC+5",
       "type": "study",
-      "studyLevel": 2,
-      "smiles": 2,
+      "studyLevel": 5,
+      "smiles": 3,
       "description": "Niveau d'études: Bac+5",
-      "image": "🎯",
-      "quantity": 4
-    },
-    {
-      "id": "study-5",
-      "name": "Doctorat",
-      "type": "study",
-      "studyLevel": 1,
-      "smiles": 2,
-      "description": "Niveau d'études: Doctorat",
-      "image": "🏆",
+      "image": "🎓",
       "quantity": 2
     },
     {
@@ -61,7 +51,7 @@
       "smiles": 1,
       "description": "Métier: Barman | Études: 0 | Salaire max: Niv.1 | Démission instant.",
       "image": "🍺",
-      "quantity": 4
+      "quantity": 1
     },
     {
       "id": "job-2",
@@ -74,7 +64,7 @@
       "smiles": 2,
       "description": "Métier: Vendeur | Études: 1 | Salaire max: Niv.1 | Démission instant.",
       "image": "🛍️",
-      "quantity": 4
+      "quantity": 1
     },
     {
       "id": "job-3",
@@ -87,7 +77,7 @@
       "smiles": 3,
       "description": "Métier: Infirmier | Études: 3 | Salaire max: Niv.2 | Peut étudier | Démission saute tour",
       "image": "💉",
-      "quantity": 3
+      "quantity": 1
     },
     {
       "id": "job-4",
@@ -100,7 +90,7 @@
       "smiles": 4,
       "description": "Métier: Ingénieur | Études: 5 | Salaire max: Niv.3 | Peut étudier | Démission saute tour",
       "image": "⚙️",
-      "quantity": 3
+      "quantity": 1
     },
     {
       "id": "job-5",
@@ -113,7 +103,7 @@
       "smiles": 5,
       "description": "Métier: Chirurgien | Études: 6 | Salaire max: Niv.4 | Peut étudier | Démission saute tour",
       "image": "🩺",
-      "quantity": 2
+      "quantity": 1
     },
     {
       "id": "job-6",
@@ -126,7 +116,7 @@
       "smiles": 4,
       "description": "Métier: Avocat | Études: 5 | Salaire max: Niv.3 | Peut étudier | Démission saute tour",
       "image": "⚖️",
-      "quantity": 2
+      "quantity": 1
     },
     {
       "id": "job-7",
@@ -139,7 +129,7 @@
       "smiles": 3,
       "description": "Métier: Artiste | Études: 2 | Salaire max: Niv.2 | Démission instant.",
       "image": "🎨",
-      "quantity": 3
+      "quantity": 1
     },
     {
       "id": "job-8",
@@ -153,7 +143,7 @@
       "smiles": 5,
       "description": "Métier: Bandit | Études: 0 | Salaire max: Niv.4 | Ne peut pas être licencié ! | Démission saute tour",
       "image": "🦹",
-      "quantity": 2
+      "quantity": 5
     },
     {
       "id": "job-9",
@@ -167,7 +157,7 @@
       "smiles": 2,
       "description": "Métier: Policier | Études: 2 | Salaire max: Niv.1 | Arrête automatiquement les bandits ! | Démission saute tour",
       "image": "👮",
-      "quantity": 2
+      "quantity": 5
     },
     {
       "id": "flirt-1",
@@ -177,7 +167,7 @@
       "smiles": 1,
       "description": "Rencontre au café",
       "image": "☕❤️",
-      "quantity": 5
+      "quantity": 2
     },
     {
       "id": "flirt-2",
@@ -187,7 +177,7 @@
       "smiles": 1,
       "description": "Rencontre au cinéma",
       "image": "🎬❤️",
-      "quantity": 5
+      "quantity": 2
     },
     {
       "id": "flirt-3",
@@ -198,7 +188,7 @@
       "canMakeBaby": true,
       "description": "Rencontre à l'hôtel",
       "image": "🏨❤️",
-      "quantity": 4
+      "quantity": 2
     },
     {
       "id": "flirt-4",
@@ -209,7 +199,7 @@
       "canMakeBaby": true,
       "description": "Rencontre au camping",
       "image": "⛺❤️",
-      "quantity": 4
+      "quantity": 2
     },
     {
       "id": "flirt-5",
@@ -219,7 +209,7 @@
       "smiles": 1,
       "description": "Rencontre au parc",
       "image": "🌳❤️",
-      "quantity": 5
+      "quantity": 2
     },
     {
       "id": "marriage-1",
@@ -246,7 +236,7 @@
       "smiles": 2,
       "description": "Adoption d'un chat",
       "image": "🐱",
-      "quantity": 5
+      "quantity": 2
     },
     {
       "id": "pet-2",
@@ -255,7 +245,7 @@
       "smiles": 2,
       "description": "Adoption d'un chien",
       "image": "🐕",
-      "quantity": 5
+      "quantity": 2
     },
     {
       "id": "pet-3",
@@ -264,7 +254,7 @@
       "smiles": 1,
       "description": "Adoption d'un lapin",
       "image": "🐰",
-      "quantity": 3
+      "quantity": 2
     },
     {
       "id": "salary-1",
@@ -281,9 +271,9 @@
       "name": "Salaire Niveau 2",
       "type": "salary",
       "salaryLevel": 2,
-      "smiles": 2,
+      "smiles": 1,
       "description": "Salaire de niveau 2 (vaut 2 salaires)",
-      "image": "💎",
+      "image": "💰",
       "quantity": 10
     },
     {
@@ -291,9 +281,9 @@
       "name": "Salaire Niveau 3",
       "type": "salary",
       "salaryLevel": 3,
-      "smiles": 3,
+      "smiles": 1,
       "description": "Salaire de niveau 3 (vaut 3 salaires)",
-      "image": "💍",
+      "image": "💰",
       "quantity": 6
     },
     {
@@ -301,9 +291,9 @@
       "name": "Salaire Niveau 4",
       "type": "salary",
       "salaryLevel": 4,
-      "smiles": 4,
+      "smiles": 2,
       "description": "Salaire de niveau 4 (vaut 4 salaires)",
-      "image": "👑",
+      "image": "💰",
       "quantity": 4
     },
     {
@@ -314,7 +304,7 @@
       "smiles": 3,
       "description": "💰 Coût: 2 salaires | +3 smiles",
       "image": "🗼",
-      "quantity": 3
+      "quantity": 2
     },
     {
       "id": "travel-2",
@@ -374,17 +364,17 @@
       "smilesLoss": 2,
       "description": "Accident: -2 smiles et saute le prochain tour",
       "image": "🚨",
-      "quantity": 5
+      "quantity": 4
     },
     {
       "id": "malus-4",
       "name": "Burn-out",
       "type": "malus",
       "effect": "burnout",
-      "smilesLoss": 3,
-      "description": "Burn-out: -3 smiles et saute le prochain tour (nécessite un métier)",
+      "smilesLoss": 1,
+      "description": "Burn-out: -1 smiles et saute le prochain tour (nécessite un métier)",
       "image": "😰",
-      "quantity": 3
+      "quantity": 4
     },
     {
       "id": "malus-5",
@@ -422,7 +412,7 @@
       "smiles": 2,
       "description": "Coup de chance ! +2 smiles bonus",
       "image": "🍀",
-      "quantity": 4
+      "quantity": 1
     },
     {
       "id": "special-3",
@@ -431,7 +421,7 @@
       "smiles": 1,
       "description": "Joyeux anniversaire ! +1 smile + Vole le dernier salaire de chaque adversaire",
       "image": "🎂",
-      "quantity": 4
+      "quantity": 1
     },
     {
       "id": "special-4",
@@ -440,7 +430,7 @@
       "smiles": 0,
       "description": "Ouvre le Casino ! Les joueurs peuvent parier leurs salaires",
       "image": "🎰",
-      "quantity": 3
+      "quantity": 1
     }
   ]
 }
