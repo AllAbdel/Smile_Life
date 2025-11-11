@@ -338,6 +338,63 @@ body {
   font-style: italic;
 }
 
+/* Cartes posées adversaires */
+.opponent-played-cards {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.opponent-cards-title {
+  font-size: 0.85em;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #667eea;
+}
+
+.opponent-cards-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.opponent-mini-card {
+  width: 35px;
+  height: 35px;
+  background: white;
+  border: 2px solid #667eea;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2em;
+  cursor: help;
+  transition: all 0.2s;
+}
+
+.opponent-mini-card:hover {
+  transform: scale(1.2);
+  z-index: 10;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+.opponent-mini-card.malus {
+  border-color: #ff5252;
+  background: #ffebee;
+}
+
+.opponent-mini-card.job-card {
+  border-color: #FFD700;
+  background: #FFF9E6;
+}
+
+.opponent-mini-card.more {
+  background: #f5f5f5;
+  font-size: 0.8em;
+  font-weight: bold;
+  color: #999;
+}
+
 .smiles {
   background: #FFD700;
   padding: 5px 10px;
@@ -827,6 +884,41 @@ body {
   color: #333;
 }
 
+/* Tableau stats détaillées */
+.all-stats-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.player-stats-row {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.player-stats-name {
+  font-weight: bold;
+  color: #667eea;
+  margin-bottom: 8px;
+  font-size: 1.1em;
+}
+
+.player-stats-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.player-stats-details span {
+  background: #f5f5f5;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.9em;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .game-container {
@@ -868,15 +960,25 @@ body {
 }
 
 .float-btn-docs {
-  bottom: 80px;
-  right: 20px;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-80px);
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
+.float-btn-docs:hover {
+  transform: translateX(-80px) scale(1.1);
+}
+
 .float-btn-media {
-  bottom: 150px;
-  right: 20px;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(20px);
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.float-btn-media:hover {
+  transform: translateX(20px) scale(1.1);
 }
 
 /* Configuration serveur */

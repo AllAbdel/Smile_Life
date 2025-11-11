@@ -113,8 +113,8 @@ function App() {
       addSystemMessage(`C'est au tour de ${currentPlayerName}`);
     });
 
-    newSocket.on('player-skipped-turn', ({ playerName }) => {
-      addSystemMessage(`⏭️ ${playerName} saute son tour !`);
+    newSocket.on('player-skipped-turn', ({ playerName, reason }) => {
+      addSystemMessage(reason || `⏭️ ${playerName} saute son tour !`);
     });
 
     newSocket.on('sound-played', ({ soundFile, soundName, playerName }) => {
@@ -459,6 +459,25 @@ function App() {
                         <div className="opponent-stat">👶 Enfants: {player.children.length}</div>
                         <div className="opponent-stat">🐾 Animaux: {player.pets.length}</div>
                       </div>
+                      
+                      {/* Cartes posées */}
+                      <div className="opponent-played-cards">
+                        <div className="opponent-cards-title">Cartes posées:</div>
+                        <div className="opponent-cards-grid">
+                          {player.playedCards.slice(0, 10).map((card, idx) => (
+                            <div 
+                              key={idx} 
+                              className={`opponent-mini-card ${card.isMalus ? 'malus' : ''} ${card.type === 'job' ? 'job-card' : ''}`}
+                              title={card.description}
+                            >
+                              {getCardEmoji(card)}
+                            </div>
+                          ))}
+                          {player.playedCards.length > 10 && (
+                            <div className="opponent-mini-card more">+{player.playedCards.length - 10}</div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -496,7 +515,9 @@ function App() {
                         className="select"
                       >
                         <option value="play-self">Jouer sur moi</option>
-                        <option value="play-opponent">Jouer sur adversaire</option>
+                        {playerData?.hand[selectedCardIndex]?.type === 'malus' && (
+                          <option value="play-opponent">Jouer sur adversaire</option>
+                        )}
                         <option value="discard">Défausser</option>
                       </select>
                       <button onClick={playCard} className="btn btn-success">
@@ -665,13 +686,35 @@ function App() {
                   {renderStat(gameData.stats.mostMalus, '💔', 'Plus de malus subis')}
                   {renderStat(gameData.stats.mostStudies, '📚', 'Plus haut niveau d\'études')}
                   {renderStat(gameData.stats.mostSalaryEnd, '💰', 'Plus de salaires à la fin')}
-                  {renderStat(gameData.stats.mostSalaryTotal, '💵', 'Plus de salaires total')}
+                  {renderStat(gameData.stats.mostSalaryTotal, '💵', 'Plus de salaires durant la partie')}
                   {renderStat(gameData.stats.mostTravels, '✈️', 'Plus de voyages')}
                   {renderStat(gameData.stats.mostFlirts, '❤️', 'Plus de flirts')}
                   {renderStat(gameData.stats.mostChildren, '👶', 'Plus d\'enfants')}
                   {renderStat(gameData.stats.mostPets, '🐾', 'Plus d\'animaux')}
-                  {renderStat(gameData.stats.mostJobs, '💼', 'Plus de métiers')}
-                  {renderStat(gameData.stats.mostMarriages, '💒', 'Plus de mariages')}
+                  {renderStat(gameData.stats.mostJobs, '💼', 'Plus de métiers durant la partie')}
+                  {renderStat(gameData.stats.mostMarriages, '💒', 'Plus de mariages durant la partie')}
+                </div>
+                
+                <h3 style={{marginTop: '30px'}}>📈 Stats détaillées de tous les joueurs</h3>
+                <div className="all-stats-table">
+                  {gameData.stats.allPlayers?.map((player, idx) => (
+                    <div key={idx} className="player-stats-row">
+                      <div className="player-stats-name">{player.name}</div>
+                      <div className="player-stats-details">
+                        <span>😊 {player.smiles}</span>
+                        <span>📚 {player.studies}</span>
+                        <span>💔 {player.malus}</span>
+                        <span>💰 {player.salaryEnd}</span>
+                        <span>💵 {player.salaryTotal}</span>
+                        <span>✈️ {player.travels}</span>
+                        <span>❤️ {player.flirts}</span>
+                        <span>👶 {player.children}</span>
+                        <span>🐾 {player.pets}</span>
+                        <span>💼 {player.jobs}</span>
+                        <span>💒 {player.marriages}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

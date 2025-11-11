@@ -56,7 +56,8 @@ class Game {
       pets: [],
       salary: [],
       skipNextTurn: false,
-      hasTakenFromDiscard: false
+      hasTakenFromDiscard: false,
+      prisonTurns: 0
     });
     return true;
   }
@@ -179,10 +180,16 @@ class Game {
           return { success: false, message: "Vous devez démissionner pour reprendre vos études" };
         }
         
-        player.studies += card.studyLevel || 1;
+        // Plafonner à 8 niveaux d'études
+        if (player.studies >= 8) {
+          return { success: false, message: "Niveau maximum d'études atteint (8)" };
+        }
+        
+        const newStudies = Math.min(8, player.studies + (card.studyLevel || 1));
+        player.studies = newStudies;
         player.playedCards.push(card);
         player.smiles += card.smiles || 0;
-        return { success: true, message: `${player.name} a gagné ${card.studyLevel} niveaux d'études` };
+        return { success: true, message: `${player.name} a gagné ${card.studyLevel} niveaux d'études (total: ${newStudies})` };
       
       case 'resign':
         // Démissionner de son métier
@@ -217,6 +224,25 @@ class Game {
           player.job = card;
           player.playedCards.push(card);
           player.smiles += card.smiles || 0;
+          
+          // Si c'est un Policier, arrêter automatiquement tous les Bandits
+          if (card.arrestsBandit) {
+            let arrestedBandits = [];
+            this.players.forEach(otherPlayer => {
+              if (otherPlayer.id !== player.id && otherPlayer.job && otherPlayer.job.name === 'Bandit') {
+                // Mettre le bandit en prison
+                otherPlayer.prisonTurns = 3;
+                otherPlayer.job = null;
+                otherPlayer.playedCards = otherPlayer.playedCards.filter(c => c.type !== 'job' || c.name !== 'Bandit');
+                arrestedBandits.push(otherPlayer.name);
+              }
+            });
+            
+            if (arrestedBandits.length > 0) {
+              return { success: true, message: `${player.name} devient Policier et arrête les bandits: ${arrestedBandits.join(', ')} ! (3 tours de prison)` };
+            }
+          }
+          
           return { success: true, message: `${player.name} a obtenu le métier: ${card.name}` };
         } else {
           return { success: false, message: "Niveau d'études insuffisant" };
@@ -310,6 +336,35 @@ class Game {
         player.smiles += card.smiles || 0;
         return { success: true, message: `${player.name} a adopté ${card.name}` };
       
+      case 'special':
+        player.playedCards.push(card);
+        player.smiles += card.smiles || 0;
+        
+        // Si c'est une carte Anniversaire, voler le dernier salaire de chaque adversaire
+        if (card.id === 'special-3' || card.name === 'Anniversaire') {
+          let stolenSalaries = 0;
+          this.players.forEach(otherPlayer => {
+            if (otherPlayer.id !== player.id && otherPlayer.salary.length > 0) {
+              const stolenSalary = otherPlayer.salary.pop();
+              const salarySmiles = stolenSalary.smiles || 1;
+              
+              // Retirer les smiles de la victime
+              otherPlayer.smiles = Math.max(0, otherPlayer.smiles - salarySmiles);
+              
+              // Ajouter au joueur
+              player.salary.push(stolenSalary);
+              player.smiles += salarySmiles;
+              stolenSalaries++;
+            }
+          });
+          
+          if (stolenSalaries > 0) {
+            return { success: true, message: `${player.name} fête son anniversaire et vole ${stolenSalaries} salaire(s) !` };
+          }
+        }
+        
+        return { success: true, message: `${player.name} : ${card.name}` };
+      
       case 'salary':
         if (!player.job) {
           return { success: false, message: "Vous devez avoir un métier" };
@@ -345,8 +400,21 @@ class Game {
           if (card.effect === 'divorce' && !player.married) {
             return { success: false, message: `${player.name} n'est pas marié(e)` };
           }
-          if (card.effect === 'fired' && !player.job) {
+          if (card.effect === 'fired') {
+            if (!player.job) {
+              return { success: false, message: `${player.name} n'a pas de métier` };
+            }
+            if (player.job.cannotBeFired) {
+              return { success: false, message: `${player.name} est un Bandit, impossible de le licencier !` };
+            }
+          }
+          if (card.effect === 'burnout' && !player.job) {
             return { success: false, message: `${player.name} n'a pas de métier` };
+          }
+          if (card.effect === 'prison') {
+            if (!player.job || player.job.name !== 'Bandit') {
+              return { success: false, message: `${player.name} n'est pas un Bandit` };
+            }
           }
           
           // Appliquer le malus
@@ -389,9 +457,11 @@ class Game {
       
       case 'fired':
         if (player.job) {
+          const jobSmiles = player.job.smiles || 0;
+          player.smiles = Math.max(0, player.smiles - jobSmiles);
           player.playedCards = player.playedCards.filter(c => c.id !== player.job.id);
           player.job = null;
-          player.salary = [];
+          // NE PAS retirer les salaires
         }
         break;
       
@@ -400,8 +470,23 @@ class Game {
         player.skipNextTurn = true; // Sauter le prochain tour
         break;
       
+      case 'burnout':
+        player.smiles = Math.max(0, player.smiles - (card.smilesLoss || 3));
+        player.skipNextTurn = true; // Sauter le prochain tour
+        break;
+      
       case 'skip_turn':
         player.skipNextTurn = true; // Sauter le prochain tour
+        break;
+      
+      case 'prison':
+        // Prison pour 3 tours
+        player.prisonTurns = card.prisonTurns || 3;
+        // Retirer le métier Bandit
+        if (player.job && player.job.name === 'Bandit') {
+          player.playedCards = player.playedCards.filter(c => c.id !== player.job.id);
+          player.job = null;
+        }
         break;
       
       default:
@@ -416,13 +501,27 @@ class Game {
     const currentPlayer = this.players[this.currentPlayerIndex];
     currentPlayer.hasTakenFromDiscard = false;
     
+    // Vérifier si le joueur est en prison
+    if (currentPlayer.prisonTurns > 0) {
+      currentPlayer.prisonTurns--;
+      console.log(`[TOUR] ${currentPlayer.name} est en prison ! ${currentPlayer.prisonTurns} tours restants`);
+      
+      const skippedPlayer = { name: currentPlayer.name, id: currentPlayer.id, reason: 'prison' };
+      
+      // Passer au joueur suivant
+      this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+      this.players[this.currentPlayerIndex].hasTakenFromDiscard = false;
+      
+      return { skipped: true, skippedPlayer };
+    }
+    
     // Si le joueur suivant doit sauter son tour
     if (currentPlayer.skipNextTurn) {
       currentPlayer.skipNextTurn = false; // Réinitialiser le flag
       console.log(`[TOUR] ${currentPlayer.name} saute son tour !`);
       
       // Retourner un message pour informer que le tour est sauté
-      const skippedPlayer = { name: currentPlayer.name, id: currentPlayer.id };
+      const skippedPlayer = { name: currentPlayer.name, id: currentPlayer.id, reason: 'skip' };
       
       // Passer au joueur suivant
       this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
@@ -515,6 +614,22 @@ class Game {
     stats.mostPets = calcMax('pets', p => p.pets.length);
     stats.mostJobs = calcMax('jobs', p => p.playedCards.filter(c => c.type === 'job').length);
     stats.mostMarriages = calcMax('marriages', p => p.playedCards.filter(c => c.type === 'marriage').length);
+    
+    // Ajouter aussi les stats de tous les joueurs
+    stats.allPlayers = this.players.map(p => ({
+      name: p.name,
+      smiles: p.smiles,
+      studies: p.studies,
+      malus: p.playedCards.filter(c => c.isMalus).length,
+      salaryEnd: p.salary.length,
+      salaryTotal: p.playedCards.filter(c => c.type === 'salary').length,
+      travels: p.playedCards.filter(c => c.type === 'travel').length,
+      flirts: p.flirts.length,
+      children: p.children.length,
+      pets: p.pets.length,
+      jobs: p.playedCards.filter(c => c.type === 'job').length,
+      marriages: p.playedCards.filter(c => c.type === 'marriage').length
+    }));
 
     return stats;
   }
@@ -715,9 +830,17 @@ io.on('connection', (socket) => {
       
       // Si un joueur a sauté son tour, envoyer un message
       if (turnResult.skipped) {
-        io.to(playerInfo.roomId).emit('player-skipped-turn', {
-          playerName: turnResult.skippedPlayer.name
-        });
+        if (turnResult.skippedPlayer.reason === 'prison') {
+          io.to(playerInfo.roomId).emit('player-skipped-turn', {
+            playerName: turnResult.skippedPlayer.name,
+            reason: `⛓️ ${turnResult.skippedPlayer.name} est en prison !`
+          });
+        } else {
+          io.to(playerInfo.roomId).emit('player-skipped-turn', {
+            playerName: turnResult.skippedPlayer.name,
+            reason: `⏭️ ${turnResult.skippedPlayer.name} saute son tour !`
+          });
+        }
       }
       
       // Vérifier si la partie est terminée
@@ -787,6 +910,12 @@ io.on('connection', (socket) => {
     
     const game = games.get(playerInfo.roomId);
     if (!game || !game.gameStarted) return;
+    
+    const currentPlayer = game.getCurrentPlayer();
+    if (currentPlayer.id !== socket.id) {
+      socket.emit('error', { message: 'Ce n\'est pas votre tour' });
+      return;
+    }
     
     const player = game.players.find(p => p.id === socket.id);
     if (!player || !player.job) {

@@ -142,6 +142,34 @@
       "quantity": 3
     },
     {
+      "id": "job-8",
+      "name": "Bandit",
+      "type": "job",
+      "requiredStudies": 0,
+      "maxSalaryLevel": 4,
+      "canStudyWhileWorking": false,
+      "canQuitInstantly": false,
+      "cannotBeFired": true,
+      "smiles": 5,
+      "description": "Métier: Bandit | Études: 0 | Salaire max: Niv.4 | Ne peut pas être licencié ! | Démission saute tour",
+      "image": "🦹",
+      "quantity": 2
+    },
+    {
+      "id": "job-9",
+      "name": "Policier",
+      "type": "job",
+      "requiredStudies": 2,
+      "maxSalaryLevel": 1,
+      "canStudyWhileWorking": false,
+      "canQuitInstantly": false,
+      "arrestsBandit": true,
+      "smiles": 2,
+      "description": "Métier: Policier | Études: 2 | Salaire max: Niv.1 | Arrête automatiquement les bandits ! | Démission saute tour",
+      "image": "👮",
+      "quantity": 2
+    },
+    {
       "id": "flirt-1",
       "name": "Flirt au Café",
       "type": "flirt",
@@ -255,7 +283,7 @@
       "salaryLevel": 2,
       "smiles": 2,
       "description": "Salaire de niveau 2 (vaut 2 salaires)",
-      "image": "💰",
+      "image": "💎",
       "quantity": 10
     },
     {
@@ -265,7 +293,7 @@
       "salaryLevel": 3,
       "smiles": 3,
       "description": "Salaire de niveau 3 (vaut 3 salaires)",
-      "image": "💰",
+      "image": "💍",
       "quantity": 6
     },
     {
@@ -275,7 +303,7 @@
       "salaryLevel": 4,
       "smiles": 4,
       "description": "Salaire de niveau 4 (vaut 4 salaires)",
-      "image": "💰",
+      "image": "👑",
       "quantity": 4
     },
     {
@@ -352,9 +380,9 @@
       "id": "malus-4",
       "name": "Burn-out",
       "type": "malus",
-      "effect": "accident",
+      "effect": "burnout",
       "smilesLoss": 3,
-      "description": "Burn-out: -3 smiles et saute le prochain tour",
+      "description": "Burn-out: -3 smiles et saute le prochain tour (nécessite un métier)",
       "image": "😰",
       "quantity": 3
     },
@@ -367,6 +395,16 @@
       "description": "Maladie: saute le prochain tour",
       "image": "🤒",
       "quantity": 4
+    },
+    {
+      "id": "malus-6",
+      "name": "Prison",
+      "type": "malus",
+      "effect": "prison",
+      "prisonTurns": 3,
+      "description": "Prison: saute 3 tours et perd le métier Bandit",
+      "image": "⛓️",
+      "quantity": 3
     },
     {
       "id": "special-1",
@@ -391,9 +429,18 @@
       "name": "Anniversaire",
       "type": "special",
       "smiles": 1,
-      "description": "Joyeux anniversaire ! +1 smile",
+      "description": "Joyeux anniversaire ! +1 smile + Vole le dernier salaire de chaque adversaire",
       "image": "🎂",
       "quantity": 4
+    },
+    {
+      "id": "special-4",
+      "name": "Casino",
+      "type": "casino",
+      "smiles": 0,
+      "description": "Ouvre le Casino ! Les joueurs peuvent parier leurs salaires",
+      "image": "🎰",
+      "quantity": 3
     }
   ]
 }
