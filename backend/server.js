@@ -1348,6 +1348,25 @@ function generateRoomCode() {
 }
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`🎮 Serveur Smile Life lancé sur le port ${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0'; // Écoute sur toutes les interfaces (LAN)
+
+server.listen(PORT, HOST, () => {
+  console.log(`🎮 Serveur Smile Life lancé sur ${HOST}:${PORT}`);
+  console.log('📡 Réseau local activé !');
+  
+  // Afficher les adresses IP locales
+  const os = require('os');
+  const interfaces = os.networkInterfaces();
+  console.log('\n🌐 Adresses IP disponibles :');
+  console.log(`   - Localhost: http://localhost:${PORT}`);
+  
+  Object.keys(interfaces).forEach(interfaceName => {
+    interfaces[interfaceName].forEach(iface => {
+      // Filtrer uniquement IPv4 et non-interne
+      if (iface.family === 'IPv4' && !iface.internal) {
+        console.log(`   - ${interfaceName}: http://${iface.address}:${PORT}`);
+      }
+    });
+  });
+  console.log('\n💡 Partage cette IP avec tes amis pour jouer en réseau local !');
 });
