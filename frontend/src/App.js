@@ -140,10 +140,28 @@ function App() {
       addSystemMessage(reason || `⏭️ ${playerName} saute son tour !`);
     });
 
-    newSocket.on('sound-played', ({ soundFile, soundName, playerName }) => {
-      // Jouer le son reçu d'un autre joueur
-      const audio = new Audio(soundFile);
-      audio.play().catch(err => console.log('Erreur lecture son:', err));
+    newSocket.on('sound-played', ({ soundFile, soundName, playerName, isLocal, procedural }) => {
+      // Si c'est un son procédural (comme Bravo)
+      if (procedural || soundName === 'Bravo !') {
+        SoundManager.play('bravo');
+      }
+      // Si c'est un fichier local
+      else if (isLocal) {
+        const audioMp3 = new Audio(soundFile);
+        audioMp3.volume = 0.5;
+        audioMp3.play().catch(err => {
+          console.log('Erreur MP3, essai WAV:', err);
+          const audioWav = new Audio(soundFile.replace('.mp3', '.wav'));
+          audioWav.volume = 0.5;
+          audioWav.play().catch(err2 => console.log('Erreur lecture son local:', err2));
+        });
+      }
+      // Sinon, fichier externe
+      else {
+        const audio = new Audio(soundFile);
+        audio.volume = 0.5;
+        audio.play().catch(err => console.log('Erreur lecture son:', err));
+      }
       addSystemMessage(`🔊 ${playerName} a joué: ${soundName}`);
     });
 

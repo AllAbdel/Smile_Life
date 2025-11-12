@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './MediaPanel.css';
+import SoundManager from './SoundManager';
 
 const MediaPanel = ({ onClose, socket }) => {
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -14,7 +15,7 @@ const MediaPanel = ({ onClose, socket }) => {
   ];
 
   const sounds = [
-    { name: 'Bravo !', emoji: '👏', file: 'https://www.myinstants.com/media/sounds/applause-3.mp3' },
+    { name: 'Bravo !', emoji: '👏', procedural: true }, // Utilise SoundManager
     { name: 'Alice 💕', emoji: '👩', file: '/assets/alice.mp3', local: true },
     { name: 'Fail', emoji: '💀', file: 'https://www.myinstants.com/media/sounds/sad-trombone.mp3' },
     { name: 'Victoire', emoji: '🏆', file: 'https://www.myinstants.com/media/sounds/victory_1.mp3' },
@@ -46,13 +47,54 @@ const MediaPanel = ({ onClose, socket }) => {
   };
 
   const playSound = (sound) => {
-    // Jouer localement
-    const audio = new Audio(sound.file);
-    audio.play().catch(err => console.log('Erreur lecture son:', err));
-    
-    // Émettre aux autres joueurs aussi
-    if (socket) {
-      socket.emit('play-sound', { soundFile: sound.file, soundName: sound.name });
+    // Si c'est "Bravo", utiliser le SoundManager procédural
+    if (sound.procedural || sound.name === 'Bravo !' || sound.name.toLowerCase().includes('bravo')) {
+      SoundManager.play('bravo');
+      
+      // Émettre aux autres joueurs
+      if (socket) {
+        socket.emit('play-sound', { 
+          soundFile: null, 
+          soundName: sound.name,
+          procedural: true
+        });
+      }
+    } 
+    // Si c'est un fichier local (comme Alice)
+    else if (sound.local) {
+      // Essayer .mp3 d'abord, puis .wav
+      const audioMp3 = new Audio(sound.file);
+      audioMp3.volume = 0.5;
+      audioMp3.play().catch(err => {
+        console.log('Erreur MP3, essai WAV:', err);
+        // Si .mp3 échoue, essayer .wav
+        const audioWav = new Audio(sound.file.replace('.mp3', '.wav'));
+        audioWav.volume = 0.5;
+        audioWav.play().catch(err2 => console.log('Erreur lecture son local:', err2));
+      });
+      
+      // Émettre aux autres joueurs
+      if (socket) {
+        socket.emit('play-sound', { 
+          soundFile: sound.file, 
+          soundName: sound.name, 
+          isLocal: true 
+        });
+      }
+    }
+    // Sinon, fichier externe
+    else {
+      const audio = new Audio(sound.file);
+      audio.volume = 0.5;
+      audio.play().catch(err => console.log('Erreur lecture son:', err));
+      
+      // Émettre aux autres joueurs
+      if (socket) {
+        socket.emit('play-sound', { 
+          soundFile: sound.file, 
+          soundName: sound.name 
+        });
+      }
     }
   };
 

@@ -1423,7 +1423,7 @@ io.on('connection', (socket) => {
   });
 
   // Jouer un son (soundboard synchronisé)
-  socket.on('play-sound', ({ soundFile, soundName }) => {
+  socket.on('play-sound', ({ soundFile, soundName, isLocal, procedural }) => {
     const playerInfo = players.get(socket.id);
     if (!playerInfo) return;
     
@@ -1431,7 +1431,9 @@ io.on('connection', (socket) => {
     socket.to(playerInfo.roomId).emit('sound-played', {
       soundFile,
       soundName,
-      playerName: playerInfo.playerName
+      playerName: playerInfo.playerName,
+      isLocal: isLocal || false,
+      procedural: procedural || false
     });
   });
 
