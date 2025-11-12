@@ -242,6 +242,10 @@ class Game {
             let arrestedBandits = [];
             this.players.forEach(otherPlayer => {
               if (otherPlayer.id !== player.id && otherPlayer.job && otherPlayer.job.name === 'Bandit') {
+                // Retirer les smiles du métier Bandit
+                const banditSmiles = otherPlayer.job.smiles || 0;
+                otherPlayer.smiles = Math.max(0, otherPlayer.smiles - banditSmiles);
+                
                 // Mettre le bandit en prison
                 otherPlayer.prisonTurns = 3;
                 otherPlayer.job = null;
@@ -1249,7 +1253,6 @@ io.on('connection', (socket) => {
     
     // Si le métier ne peut pas être quitté instantanément, sauter le prochain tour
     if (!canQuitInstantly) {
-      player.skipNextTurn = true;
       io.to(playerInfo.roomId).emit('card-played', {
         playerId: socket.id,
         playerName: playerInfo.playerName,
@@ -1257,15 +1260,12 @@ io.on('connection', (socket) => {
         gameState: game.getPublicGameState()
       });
       
-      // Passer au tour suivant
-      const turnResult = game.nextTurn();
-      if (turnResult.skipped) {
-        io.to(playerInfo.roomId).emit('player-skipped-turn', {
-          playerName: turnResult.skippedPlayer.name
-        });
-      }
-      
+      // Passer directement au tour suivant SANS appeler nextTurn() 
+      // car le saut est déjà effectué ici
+      game.currentPlayerIndex = (game.currentPlayerIndex + 1) % game.players.length;
       const nextPlayer = game.getCurrentPlayer();
+      nextPlayer.hasTakenFromDiscard = false;
+      
       io.to(playerInfo.roomId).emit('turn-changed', {
         currentPlayerId: nextPlayer.id,
         currentPlayerName: nextPlayer.name,

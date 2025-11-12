@@ -334,6 +334,49 @@ function App() {
   const getCardEmoji = (card) => {
     return card.image || '🎴';
   };
+  
+  // Organiser les cartes par catégorie
+  const organizeCardsByCategory = (cards) => {
+    const categories = {
+      malus: { name: 'Malus', icon: '💔', cards: [] },
+      flirt: { name: 'Flirts/Mariage', icon: '❤️', cards: [] },
+      job: { name: 'Métier', icon: '💼', cards: [] },
+      salary: { name: 'Salaires', icon: '💰', cards: [] },
+      child: { name: 'Enfants', icon: '👶', cards: [] },
+      pet: { name: 'Animaux', icon: '🐾', cards: [] },
+      housing: { name: 'Logement', icon: '🏠', cards: [] },
+      study: { name: 'Études', icon: '📚', cards: [] },
+      travel: { name: 'Voyages', icon: '✈️', cards: [] },
+      other: { name: 'Autre', icon: '🎴', cards: [] }
+    };
+    
+    cards.forEach(card => {
+      if (card.isMalus) {
+        categories.malus.cards.push(card);
+      } else if (card.type === 'flirt' || card.type === 'marriage' || card.type === 'adultery') {
+        categories.flirt.cards.push(card);
+      } else if (card.type === 'job') {
+        categories.job.cards.push(card);
+      } else if (card.type === 'salary') {
+        categories.salary.cards.push(card);
+      } else if (card.type === 'child') {
+        categories.child.cards.push(card);
+      } else if (card.type === 'pet') {
+        categories.pet.cards.push(card);
+      } else if (card.type === 'housing') {
+        categories.housing.cards.push(card);
+      } else if (card.type === 'study') {
+        categories.study.cards.push(card);
+      } else if (card.type === 'travel') {
+        categories.travel.cards.push(card);
+      } else {
+        categories.other.cards.push(card);
+      }
+    });
+    
+    // Retourner seulement les catégories qui ont des cartes
+    return Object.values(categories).filter(cat => cat.cards.length > 0);
+  };
 
   // Rendu du menu principal
   if (gameState === 'menu') {
@@ -536,7 +579,7 @@ function App() {
                         <div className="opponent-stat">🐾 Animaux: {player.pets.length}</div>
                       </div>
                       
-                      {/* Cartes posées - déroulantes */}
+                      {/* Cartes posées - déroulantes par catégorie */}
                       <div className="opponent-played-cards">
                         <div 
                           className="opponent-cards-toggle"
@@ -549,15 +592,27 @@ function App() {
                           <span className="toggle-icon">{isExpanded ? '▼' : '▶'}</span>
                         </div>
                         {isExpanded && (
-                          <div className="opponent-cards-grid">
-                            {player.playedCards.map((card, idx) => (
-                              <div 
-                                key={idx} 
-                                className={`opponent-mini-card ${card.isMalus ? 'malus' : ''} ${card.type === 'job' ? 'job-card' : ''}`}
-                                title={card.description}
-                              >
-                                <span className="card-mini-emoji">{getCardEmoji(card)}</span>
-                                <span className="card-mini-name">{card.name}</span>
+                          <div className="opponent-cards-categories">
+                            {organizeCardsByCategory(player.playedCards).map((category, catIdx) => (
+                              <div key={catIdx} className="card-category-pile">
+                                <div className="pile-header">
+                                  <span className="pile-icon">{category.icon}</span>
+                                  <span className="pile-name">{category.name}</span>
+                                  <span className="pile-count">({category.cards.length})</span>
+                                </div>
+                                <div className="pile-cards">
+                                  {category.cards.map((card, cardIdx) => (
+                                    <div 
+                                      key={cardIdx}
+                                      className={`pile-card ${card.isMalus ? 'malus' : ''}`}
+                                      title={card.description}
+                                    >
+                                      <span className="pile-card-emoji">{getCardEmoji(card)}</span>
+                                      <span className="pile-card-name">{card.name}</span>
+                                      {card.smiles > 0 && <span className="pile-card-smiles">+{card.smiles}😊</span>}
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             ))}
                           </div>
