@@ -363,6 +363,15 @@ class Game {
         player.playedCards.push(card);
         player.smiles += card.smiles || 0;
         
+        // Si c'est une carte Chance, permettre de choisir une carte de la défausse
+        if (card.effect === 'pick_from_discard' || card.id === 'special-2' || card.name === 'Chance') {
+          return { 
+            success: true, 
+            message: `${player.name} a joué Chance ! Choisis une carte de la défausse.`,
+            needsDiscardPick: true 
+          };
+        }
+        
         // Si c'est une carte Anniversaire, voler le dernier salaire de chaque adversaire
         if (card.id === 'special-3' || card.name === 'Anniversaire') {
           let stolenSalaries = 0;
@@ -760,8 +769,15 @@ class Game {
       playerId: player.id,
       playerName: player.name,
       salaryCard: salaryCard,
-      betAmount: betAmount // Le niveau est caché des autres joueurs
+      betAmount: betAmount, // Le niveau est caché des autres joueurs
+      isFirstBet: this.casinoBets.length === 0 // Marquer si c'est le premier pari (caché)
     });
+    
+    // Faire piocher UNE carte au joueur qui vient de parier
+    if (this.deck.length > 0) {
+      const drawnCard = this.deck.pop();
+      player.hand.push(drawnCard);
+    }
     
     // Si c'est le 2ème pari, résoudre automatiquement le duel
     if (this.casinoBets.length === 2) {
@@ -769,14 +785,16 @@ class Game {
         success: true, 
         message: `${player.name} a parié ! Le duel commence !`,
         cardPlayed: true,
-        shouldResolve: true // Signal pour résoudre automatiquement
+        shouldResolve: true, // Signal pour résoudre automatiquement
+        skipTurn: true // Le 2ème joueur doit aussi sauter son tour
       };
     }
     
     return { 
       success: true, 
       message: `${player.name} a parié au casino ! En attente d'un adversaire...`,
-      cardPlayed: true
+      cardPlayed: true,
+      skipTurn: true // Le joueur qui parie doit sauter son tour
     };
   }
 
@@ -816,10 +834,9 @@ class Game {
     
     const totalWinnings = winnerBet.betAmount + loserBet.betAmount;
     
-    // Fermer le casino
-    this.casinoActive = false;
+    // NE PAS FERMER LE CASINO - Il reste ouvert jusqu'à la fin de la partie
+    // Juste vider les paris pour permettre un nouveau duel
     this.casinoBets = [];
-    this.casinoOpenedBy = null;
     
     return { 
       success: true, 
@@ -834,6 +851,29 @@ class Game {
       message: winnerBet.betAmount === loserBet.betAmount 
         ? `🎰 Même niveau (${winnerBet.betAmount}) ! ${winner.name} (2ème joueur) remporte le duel ! 🎰`
         : `🎰 Niveaux différents (${bet1.betAmount} vs ${bet2.betAmount}) ! ${winner.name} (1er joueur) remporte le duel ! 🎰`
+    };
+  }
+
+  pickFromDiscard(playerId, cardIndex) {
+    const player = this.players.find(p => p.id === playerId);
+    if (!player) return { success: false, message: "Joueur invalide" };
+    
+    if (this.discardPile.length === 0) {
+      return { success: false, message: "La défausse est vide" };
+    }
+    
+    if (cardIndex < 0 || cardIndex >= this.discardPile.length) {
+      return { success: false, message: "Index de carte invalide" };
+    }
+    
+    // Prendre la carte à l'index spécifié
+    const card = this.discardPile.splice(cardIndex, 1)[0];
+    player.hand.push(card);
+    
+    return { 
+      success: true, 
+      message: `${player.name} a récupéré ${card.name} de la défausse grâce à Chance !`,
+      card: card
     };
   }
 
@@ -1074,6 +1114,15 @@ io.on('connection', (socket) => {
         }
       }
       
+      // Si c'est une carte Chance, permettre de choisir dans la défausse
+      if (result.needsDiscardPick) {
+        socket.emit('chance-discard-pick', {
+          message: result.message,
+          discardPile: game.discardPile
+        });
+        return; // Ne pas piocher automatiquement, attendre le choix
+      }
+      
       // Si c'est un Tsunami, envoyer les nouvelles mains à tous les joueurs
       if (result.tsunami) {
         game.players.forEach(p => {
@@ -1244,13 +1293,22 @@ io.on('connection', (socket) => {
         playerName: playerInfo.playerName,
         message: result.message,
         gameState: game.getPublicGameState(),
-        betCount: game.casinoBets.length
+        betCount: game.casinoBets.length,
+        firstBetHidden: game.casinoBets.length === 1 // Indiquer si le premier pari doit être caché
       });
       
       socket.emit('hand-update', {
         hand: game.getPlayerData(socket.id).hand,
         playerState: game.getPlayerData(socket.id)
       });
+      
+      // Passer au prochain joueur si skipTurn est true
+      if (result.skipTurn) {
+        game.nextTurn();
+        io.to(playerInfo.roomId).emit('game-update', {
+          gameState: game.getPublicGameState()
+        });
+      }
       
       // Si c'est le 2ème pari, résoudre automatiquement le duel
       if (result.shouldResolve) {
@@ -1287,34 +1345,34 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Résoudre les paris du casino
-  socket.on('casino-resolve', () => {
+  // Choisir une carte de la défausse avec la carte Chance
+  socket.on('pick-from-discard-with-chance', ({ cardIndex }) => {
     const playerInfo = players.get(socket.id);
     if (!playerInfo) return;
     
     const game = games.get(playerInfo.roomId);
     if (!game || !game.gameStarted) return;
     
-    const result = game.resolveCasinoBets();
+    const result = game.pickFromDiscard(socket.id, cardIndex);
     
     if (result.success) {
-      io.to(playerInfo.roomId).emit('casino-resolved', {
-        winner: result.winner,
-        winnerId: result.winnerId,
-        totalWinnings: result.totalWinnings,
-        losers: result.losers,
+      io.to(playerInfo.roomId).emit('card-played', {
+        playerId: socket.id,
+        playerName: playerInfo.playerName,
         message: result.message,
         gameState: game.getPublicGameState()
       });
       
-      // Mettre à jour la main du gagnant
-      const winner = game.players.find(p => p.id === result.winnerId);
-      if (winner) {
-        io.to(result.winnerId).emit('hand-update', {
-          hand: game.getPlayerData(result.winnerId).hand,
-          playerState: game.getPlayerData(result.winnerId)
-        });
-      }
+      socket.emit('hand-update', {
+        hand: game.getPlayerData(socket.id).hand,
+        playerState: game.getPlayerData(socket.id)
+      });
+      
+      // Passer au joueur suivant
+      game.nextTurn();
+      io.to(playerInfo.roomId).emit('game-update', {
+        gameState: game.getPublicGameState()
+      });
     } else {
       socket.emit('error', { message: result.message });
     }

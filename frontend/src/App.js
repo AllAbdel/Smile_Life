@@ -51,6 +51,10 @@ function App() {
   const [showCasinoBetPrompt, setShowCasinoBetPrompt] = useState(false);
   const [casinoJustPlayed, setCasinoJustPlayed] = useState(false);
   
+  // État pour la carte Chance
+  const [showChanceDiscardPick, setShowChanceDiscardPick] = useState(false);
+  const [chanceDiscardPile, setChanceDiscardPile] = useState([]);
+  
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -166,6 +170,13 @@ function App() {
     newSocket.on('casino-prompt-bet', ({ message }) => {
       // Proposer au joueur de parier
       setShowCasinoBetPrompt(true);
+    });
+
+    newSocket.on('chance-discard-pick', ({ message, discardPile }) => {
+      // Permettre au joueur de choisir une carte de la défausse
+      addSystemMessage(message);
+      setChanceDiscardPile(discardPile);
+      setShowChanceDiscardPick(true);
     });
 
     newSocket.on('casino-bet-placed', ({ playerName, message, gameState, betCount }) => {
@@ -467,10 +478,10 @@ function App() {
     setShowCasinoBet(false);
   };
 
-  const resolveCasino = () => {
-    if (window.confirm('Résoudre les paris du casino ? Un gagnant sera tiré au sort !')) {
-      socket.emit('casino-resolve');
-    }
+  const pickFromDiscardWithChance = (cardIndex) => {
+    socket.emit('pick-from-discard-with-chance', { cardIndex });
+    setShowChanceDiscardPick(false);
+    setChanceDiscardPile([]);
   };
 
   const sendMessage = (e) => {
@@ -864,7 +875,13 @@ function App() {
                       <div className="casino-bets-list">
                         {gameData.casinoBets.map((bet, idx) => (
                           <div key={idx} className="casino-bet-item">
-                            {bet.playerName}: {bet.betAmount} 💰
+                            {idx === 0 ? (
+                              // Premier pari caché
+                              `${bet.playerName}: ❓ (Face cachée)`
+                            ) : (
+                              // Deuxième pari visible
+                              `${bet.playerName}: Niv.${bet.betAmount} 💰`
+                            )}
                           </div>
                         ))}
                       </div>
@@ -875,14 +892,6 @@ function App() {
                     >
                       Parier
                     </button>
-                    {gameData.casinoBets && gameData.casinoBets.length > 0 && (
-                      <button 
-                        className="btn-casino-resolve"
-                        onClick={resolveCasino}
-                      >
-                        Tirer au sort
-                      </button>
-                    )}
                   </div>
                 )}
                 
@@ -1141,6 +1150,35 @@ function App() {
             </div>
           </div>
         )}
+        
+        {/* Modal Chance - Choisir une carte de la défausse */}
+        {showChanceDiscardPick && (
+          <div className="modal-overlay" onClick={() => setShowChanceDiscardPick(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3>🍀 Carte Chance ! Choisis une carte de la défausse</h3>
+              <div className="discard-picker-grid">
+                {chanceDiscardPile.slice().reverse().map((card, index) => {
+                  const actualIndex = chanceDiscardPile.length - 1 - index;
+                  return (
+                    <div 
+                      key={actualIndex} 
+                      className="discard-picker-card"
+                      onClick={() => pickFromDiscardWithChance(actualIndex)}
+                    >
+                      <div className="card-emoji-large">{getCardEmoji(card)}</div>
+                      <div className="card-name">{card.name}</div>
+                      <div className="card-smiles">😊 {card.smiles || 0}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button className="btn btn-secondary" onClick={() => setShowChanceDiscardPick(false)}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+        
         {showDiscardPicker && (
           <div className="modal-overlay" onClick={() => setShowDiscardPicker(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>

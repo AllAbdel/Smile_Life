@@ -469,8 +469,9 @@
       "id": "special-2",
       "name": "Chance",
       "type": "special",
-      "smiles": 2,
-      "description": "Coup de chance ! +2 smiles bonus",
+      "effect": "pick_from_discard",
+      "smiles": 0,
+      "description": "Choisis n'importe quelle carte de la défausse !",
       "image": "🍀",
       "quantity": 1
     },
@@ -499,7 +500,7 @@
       "smiles": 0,
       "description": "Mélange toutes les cartes de tous les joueurs et les redistribue !",
       "image": "🌊",
-      "quantity": 1
+      "quantity": 10
     }
   ]
 }

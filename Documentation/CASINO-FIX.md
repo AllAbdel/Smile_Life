@@ -27,12 +27,16 @@
 
 ### 2. Premier Pari
 - Le joueur (ou un autre) choisit un salaire de sa **main**
-- Le niveau du salaire est **caché** des autres
+- Le niveau du salaire est **caché** des autres (affiché comme "❓ Face cachée")
+- Le joueur **pioche 1 carte** immédiatement
+- Le tour du joueur est **sauté** (passe au joueur suivant)
 - Message : "En attente d'un adversaire..."
 
 ### 3. Deuxième Pari
 - Un autre joueur parie un salaire de sa **main**
-- Niveau également **caché**
+- Niveau **visible** cette fois (affiché clairement)
+- Le joueur **pioche 1 carte** immédiatement
+- Le tour du joueur est **sauté** également
 - **Duel automatique** lancé après 1 seconde
 
 ### 4. Résolution du Duel
@@ -59,7 +63,8 @@ SINON
 - Le gagnant récupère **les 2 salaires**
 - Les salaires vont dans `player.salary` (salaires posés)
 - Smiles additionnés
-- Casino fermé
+- **Casino reste ouvert** pour un nouveau duel !
+- Les paris sont vidés pour permettre 2 nouveaux joueurs de parier
 
 ---
 
@@ -88,17 +93,23 @@ return {
 - Vérification : Max 2 paris
 - Vérification : Pas de double pari du même joueur
 - Utilise `player.hand` au lieu de `player.salary`
+- **Fait piocher 1 carte** au joueur qui parie
+- Marque le 1er pari comme caché (`isFirstBet: true`)
 - Retourne `shouldResolve: true` si 2ème pari
+- Retourne `skipTurn: true` pour sauter le tour du joueur
 
 **resolveCasinoBets()** :
 - Vérifie exactement 2 paris
 - Applique la règle : même niveau → 2ème gagne, sinon 1er gagne
-- Ferme le casino automatiquement
+- **Ne ferme plus le casino** (reste ouvert)
+- Vide juste les paris (`this.casinoBets = []`)
 - Retourne détails complets (niveaux, gagnant, perdant)
 
 **Socket 'casino-bet'** :
 - Résolution automatique si 2ème pari
-- Délai de 1 seconde pour le suspense
+- **Passe au prochain joueur** (`game.nextTurn()`) après le pari
+- Délai de 1 seconde pour le suspense avant résolution
+- Émet `casino-bet-placed` avec `firstBetHidden` flag
 - Émet `casino-resolved` avec tous les détails
 
 **Socket 'play-card'** :
@@ -118,6 +129,8 @@ const [showCasinoBetPrompt, setShowCasinoBetPrompt] = useState(false);
 
 **Écouteur `casino-bet-placed`** :
 - Affiche le nombre de paris (1/2)
+- **Affiche le 1er pari comme "❓ Face cachée"**
+- **Affiche le 2ème pari avec niveau visible**
 - Message d'attente si 1 seul pari
 
 **Écouteur `casino-resolved`** :
@@ -128,6 +141,11 @@ const [showCasinoBetPrompt, setShowCasinoBetPrompt] = useState(false);
 **Modal de pari** :
 - Affiche uniquement les salaires de la **main**
 - Pas les salaires déjà posés
+
+**Interface Casino** :
+- **Suppression du bouton "Tirer au sort"**
+- Affichage du 1er pari caché : "Joueur: ❓ (Face cachée)"
+- Affichage du 2ème pari visible : "Joueur: Niv.X 💰"
 
 ---
 
@@ -176,25 +194,43 @@ const [showCasinoBetPrompt, setShowCasinoBetPrompt] = useState(false);
 3. Clique "Oui"
 4. Choisis un salaire de ta **main**
 5. Vérifie : Salaire retiré de la main
-6. Message : "En attente d'un adversaire..."
+6. Vérifie : **Tu as pioché 1 carte**
+7. Vérifie : **Ton tour a été sauté**
+8. Vérifie : Pari affiché comme "❓ Face cachée"
+9. Message : "En attente d'un adversaire..."
 
 ### Test 2 : Duel même niveau
-1. Joueur A parie : Salaire Niv.2
-2. Joueur B parie : Salaire Niv.2
-3. Vérifie : "Même niveau ! Joueur B gagne !"
-4. Vérifie : Joueur B a +2 salaires posés
+1. Joueur A parie : Salaire Niv.2 (caché)
+2. Vérifie : Tour de A sauté + pioche 1 carte
+3. Joueur B parie : Salaire Niv.2 (visible)
+4. Vérifie : Tour de B sauté + pioche 1 carte
+5. Vérifie : "Même niveau ! Joueur B gagne !"
+6. Vérifie : Joueur B a +2 salaires posés
+7. **Vérifie : Casino reste ouvert**
 
 ### Test 3 : Duel niveaux différents
-1. Joueur A parie : Salaire Niv.3
-2. Joueur B parie : Salaire Niv.1
+1. Joueur A parie : Salaire Niv.3 (caché)
+2. Joueur B parie : Salaire Niv.1 (visible)
 3. Vérifie : "Niveaux différents ! Joueur A gagne !"
 4. Vérifie : Joueur A a +2 salaires posés
+5. **Vérifie : Casino reste ouvert**
 
-### Test 4 : Limitation 2 joueurs
+### Test 4 : Limitation 2 joueurs + Casino permanent
 1. Joueur A parie
 2. Joueur B parie → Duel résolu
-3. Casino fermé automatiquement
-4. Joueur C ne peut plus parier
+3. **Casino reste ouvert**
+4. Joueur C peut parier pour un nouveau duel
+5. Joueur D peut parier → Nouveau duel
+6. Casino reste ouvert jusqu'à la fin de la partie
+
+### Test 5 : Pioche et skip de tour
+1. Joueur A a 5 cartes
+2. Joueur A parie au casino
+3. Vérifie : A a toujours 5 cartes (perd 1, pioche 1)
+4. Vérifie : Tour passé au joueur suivant
+5. Joueur B parie
+6. Vérifie : B a toujours 5 cartes
+7. Vérifie : Tour passé au joueur suivant (pas B)
 
 ### Test 5 : Sons
 1. Clique sur "Bravo !" dans la soundboard
@@ -213,9 +249,13 @@ const [showCasinoBetPrompt, setShowCasinoBetPrompt] = useState(false);
 | Salaires posés utilisés | Changé vers `player.hand` |
 | Plusieurs joueurs | Limite à 2 paris max |
 | Tirage aléatoire | Règle fixe : même niveau → 2ème, sinon 1er |
-| Niveaux visibles | Paris cachés, révélés à la résolution |
+| Niveaux visibles | 1er pari caché (❓), 2ème visible |
 | Pas de prompt | Événement dédié envoyé au joueur |
 | Son "Bravo" ne marche pas | Créé avec Web Audio API (mélodie) |
+| Casino se ferme après duel | Casino reste ouvert toute la partie |
+| Pas de pioche après pari | Pioche 1 carte automatiquement |
+| Tour pas sauté après pari | `game.nextTurn()` appelé automatiquement |
+| Bouton "Tirer au sort" inutile | Bouton supprimé (résolution auto) |
 
 ---
 
@@ -227,9 +267,19 @@ const [showCasinoBetPrompt, setShowCasinoBetPrompt] = useState(false);
 
 ### Pioche après Casino+Pari
 Si tu joues Casino ET paries immédiatement :
-- Tu as joué 2 cartes ce tour
-- **Bug potentiel** : Tu piocheras qu'1 carte (pas 2)
-- **À corriger** : Système de pioche multiple si combo
+- Tu joues la carte Casino (1 carte)
+- Tu paris un salaire (1 carte)
+- **Tu pioches 1 carte** après le pari
+- Total : -2 cartes + 1 pioche = tu as 4 cartes
+- **Ton tour est sauté**, donc tu ne pioches pas normalement
+- À ton prochain tour, tu piocheras jusqu'à 5 cartes
+
+### Casino Permanent
+- **Le casino ne se ferme JAMAIS** une fois ouvert
+- Après chaque duel, seuls les paris sont vidés
+- D'autres joueurs peuvent parier pour un nouveau duel
+- Le casino reste actif jusqu'à la fin de la partie
+- Permet des duels multiples tout au long du jeu
 
 ---
 

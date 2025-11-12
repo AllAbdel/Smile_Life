@@ -135,7 +135,7 @@ const Documentation = ({ onClose }) => {
             <h4>✨ CARTES SPÉCIALES</h4>
             <ul>
               <li><strong>😈 Adultère</strong> : Permet de flirter en étant marié (pas de limite de flirts)</li>
-              <li><strong>🍀 Chance</strong> : +2 smiles bonus immédiat</li>
+              <li><strong>🍀 Chance</strong> : Choisis n'importe quelle carte de la défausse !</li>
               <li><strong>🎂 Anniversaire</strong> : +1 smile + Vole le dernier salaire de chaque adversaire !</li>
               <li><strong>🎰 Casino</strong> : Ouvre un duel de paris (voir section dédiée)</li>
               <li><strong>🌊 Tsunami</strong> : Mélange TOUTES les cartes de TOUS les joueurs et redistribue ! Chaos total !</li>
@@ -198,6 +198,7 @@ const Documentation = ({ onClose }) => {
             <li>Le <strong>Militaire</strong> protège contre les attentats</li>
             <li>Au <strong>Casino</strong>, parier en 2ème position est avantageux (gagne si égalité)</li>
             <li><strong>Anniversaire</strong> est très puissant : vole 1 salaire à chaque adversaire !</li>
+            <li><strong>Chance</strong> te permet de récupérer n'importe quelle carte dans la défausse !</li>
           </ul>
         </section>
 
