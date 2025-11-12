@@ -51,6 +51,10 @@ function App() {
   const [showCasinoBetPrompt, setShowCasinoBetPrompt] = useState(false);
   const [casinoJustPlayed, setCasinoJustPlayed] = useState(false);
   
+  // État pour la carte Chance
+  const [showChanceModal, setShowChanceModal] = useState(false);
+  const [chanceDiscardPile, setChanceDiscardPile] = useState([]);
+  
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -166,6 +170,13 @@ function App() {
     newSocket.on('casino-prompt-bet', ({ message }) => {
       // Proposer au joueur de parier
       setShowCasinoBetPrompt(true);
+    });
+
+    newSocket.on('chance-activated', ({ message, discardPile }) => {
+      // Afficher le modal pour choisir une carte de la défausse
+      addSystemMessage(message);
+      setChanceDiscardPile(discardPile);
+      setShowChanceModal(true);
     });
 
     newSocket.on('casino-bet-placed', ({ playerName, message, gameState, betCount }) => {
@@ -465,6 +476,12 @@ function App() {
   const placeCasinoBet = (salaryIndex) => {
     socket.emit('casino-bet', { salaryCardIndex: salaryIndex });
     setShowCasinoBet(false);
+  };
+
+  const selectChanceCard = (cardIndex) => {
+    socket.emit('take-discard-card', { cardIndex });
+    setShowChanceModal(false);
+    setChanceDiscardPile([]);
   };
 
   const sendMessage = (e) => {
@@ -1133,6 +1150,40 @@ function App() {
             </div>
           </div>
         )}
+        
+        {/* Modal pour la carte Chance - Choisir une carte de la défausse */}
+        {showChanceModal && (
+          <div className="modal-overlay" onClick={() => setShowChanceModal(false)}>
+            <div className="modal-content chance-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>🍀 CHANCE ! Choisis une carte de la défausse</h3>
+              <p>Tu peux récupérer n'importe quelle carte de la défausse !</p>
+              <div className="chance-cards-grid">
+                {chanceDiscardPile.length > 0 ? (
+                  chanceDiscardPile.slice().reverse().map((card, index) => {
+                    const actualIndex = chanceDiscardPile.length - 1 - index;
+                    return (
+                      <div 
+                        key={actualIndex} 
+                        className="chance-card"
+                        onClick={() => selectChanceCard(actualIndex)}
+                      >
+                        <div className="card-emoji-large">{getCardEmoji(card)}</div>
+                        <div className="card-name">{card.name}</div>
+                        <div className="card-smiles">😊 {card.smiles || 0}</div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p>Défausse vide !</p>
+                )}
+              </div>
+              <button className="btn btn-secondary" onClick={() => setShowChanceModal(false)}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+        
         {showDiscardPicker && (
           <div className="modal-overlay" onClick={() => setShowDiscardPicker(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>

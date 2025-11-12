@@ -1833,7 +1833,81 @@ body {
 }
 
 /* ========================================
-   🎨 DRAG & DROP SYSTEM
+   � MODAL CHANCE
+   ======================================== */
+
+.chance-modal {
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.chance-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 15px;
+  margin: 20px 0;
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.chance-card {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border: 3px solid #4CAF50;
+  border-radius: 15px;
+  padding: 15px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.chance-card::before {
+  content: "🍀";
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 1.5em;
+  opacity: 0.5;
+}
+
+.chance-card:hover {
+  transform: translateY(-10px) scale(1.08);
+  box-shadow: 0 15px 35px rgba(76, 175, 80, 0.6);
+  border-color: #FFD700;
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+}
+
+.chance-card:hover::before {
+  opacity: 1;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.chance-card .card-emoji-large {
+  font-size: 3em;
+  margin-bottom: 10px;
+}
+
+.chance-card .card-name {
+  font-weight: bold;
+  color: #333;
+  margin: 8px 0;
+  font-size: 0.9em;
+}
+
+.chance-card .card-smiles {
+  color: #666;
+  font-size: 0.85em;
+}
+
+/* ========================================
+   �🎨 DRAG & DROP SYSTEM
    ======================================== */
 
 /* Curseur pendant le drag */

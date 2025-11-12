@@ -359,6 +359,16 @@ class Game {
         player.smiles += card.smiles || 0;
         return { success: true, message: `${player.name} a adopté ${card.name}` };
       
+      case 'chance':
+        // La carte Chance permet de choisir une carte de la défausse
+        player.playedCards.push(card);
+        return { 
+          success: true, 
+          message: `${player.name} a joué la carte Chance ! 🍀`, 
+          chanceActivated: true,
+          availableCards: this.discardPile.length
+        };
+      
       case 'special':
         player.playedCards.push(card);
         player.smiles += card.smiles || 0;
@@ -717,6 +727,25 @@ class Game {
       gameStarted: this.gameStarted,
       casinoActive: this.casinoActive,
       casinoBets: this.casinoBets
+    };
+  }
+
+  takeCardFromDiscardWithChance(playerId, cardIndex) {
+    const player = this.players.find(p => p.id === playerId);
+    if (!player) return { success: false, message: "Joueur invalide" };
+    
+    if (cardIndex < 0 || cardIndex >= this.discardPile.length) {
+      return { success: false, message: "Carte invalide" };
+    }
+    
+    // Prendre la carte spécifique de la défausse
+    const card = this.discardPile.splice(cardIndex, 1)[0];
+    player.hand.push(card);
+    
+    return { 
+      success: true, 
+      message: `${player.name} récupère ${card.name} de la défausse ! 🍀`,
+      card: card
     };
   }
 
@@ -1080,6 +1109,14 @@ io.on('connection', (socket) => {
             message: "Veux-tu parier un salaire immédiatement ?"
           });
         }
+      }
+      
+      // Si c'est une carte Chance, permettre de choisir dans la défausse
+      if (result.chanceActivated) {
+        socket.emit('chance-activated', {
+          message: "Choisis une carte dans la défausse ! 🍀",
+          discardPile: game.discardPile
+        });
       }
       
       // Si c'est un Tsunami, envoyer les nouvelles mains à tous les joueurs

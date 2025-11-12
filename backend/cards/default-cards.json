@@ -468,11 +468,11 @@
     {
       "id": "special-2",
       "name": "Chance",
-      "type": "special",
-      "smiles": 2,
-      "description": "Coup de chance ! +2 smiles bonus",
+      "type": "chance",
+      "smiles": 0,
+      "description": "Coup de chance ! Choisis une carte dans la défausse",
       "image": "🍀",
-      "quantity": 1
+      "quantity": 10
     },
     {
       "id": "special-3",
@@ -490,7 +490,7 @@
       "smiles": 0,
       "description": "Ouvre le Casino ! Les joueurs peuvent parier leurs salaires",
       "image": "🎰",
-      "quantity": 10
+      "quantity": 1
     },
     {
       "id": "special-5",
