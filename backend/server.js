@@ -363,15 +363,6 @@ class Game {
         player.playedCards.push(card);
         player.smiles += card.smiles || 0;
         
-        // Si c'est une carte Chance, permettre de choisir une carte de la défausse
-        if (card.effect === 'pick_from_discard' || card.id === 'special-2' || card.name === 'Chance') {
-          return { 
-            success: true, 
-            message: `${player.name} a joué Chance ! Choisis une carte de la défausse.`,
-            needsDiscardPick: true 
-          };
-        }
-        
         // Si c'est une carte Anniversaire, voler le dernier salaire de chaque adversaire
         if (card.id === 'special-3' || card.name === 'Anniversaire') {
           let stolenSalaries = 0;
@@ -508,33 +499,7 @@ class Game {
           cardIndex++;
         }
         
-        return { 
-          success: true, 
-          message: `🌊 ${player.name} a déclenché un TSUNAMI ! Toutes les cartes ont été mélangées ! 🌊`, 
-          tsunami: true,
-          keepTurn: true // Le joueur garde son tour après le tsunami
-        };
-      
-      case 'troc':
-        // Le joueur doit choisir un adversaire pour troquer des cartes
-        if (!targetPlayerId || targetPlayerId === playerId) {
-          return { success: false, message: "Tu dois choisir un adversaire pour le troc !" };
-        }
-        
-        const targetPlayer = this.players.find(p => p.id === targetPlayerId);
-        if (!targetPlayer || targetPlayer.hand.length === 0) {
-          return { success: false, message: "L'adversaire n'a pas de cartes !" };
-        }
-        
-        player.playedCards.push(card);
-        
-        return {
-          success: true,
-          message: `🔄 ${player.name} veut faire un troc avec ${targetPlayer.name} !`,
-          needsTrocCardSelection: true,
-          targetPlayerId: targetPlayerId,
-          targetPlayerName: targetPlayer.name
-        };
+        return { success: true, message: `🌊 ${player.name} a déclenché un TSUNAMI ! Toutes les cartes ont été mélangées ! 🌊`, tsunami: true };
       
       case 'casino':
         // Activer le casino
@@ -880,64 +845,6 @@ class Game {
     };
   }
 
-  pickFromDiscard(playerId, cardIndex) {
-    const player = this.players.find(p => p.id === playerId);
-    if (!player) return { success: false, message: "Joueur invalide" };
-    
-    if (this.discardPile.length === 0) {
-      return { success: false, message: "La défausse est vide" };
-    }
-    
-    if (cardIndex < 0 || cardIndex >= this.discardPile.length) {
-      return { success: false, message: "Index de carte invalide" };
-    }
-    
-    // Prendre la carte à l'index spécifié
-    const card = this.discardPile.splice(cardIndex, 1)[0];
-    player.hand.push(card);
-    
-    return { 
-      success: true, 
-      message: `${player.name} a récupéré ${card.name} de la défausse grâce à Chance !`,
-      card: card
-    };
-  }
-
-  executeTroc(playerId, targetPlayerId, cardIndexToGive) {
-    const player = this.players.find(p => p.id === playerId);
-    const targetPlayer = this.players.find(p => p.id === targetPlayerId);
-    
-    if (!player || !targetPlayer) {
-      return { success: false, message: "Joueur invalide" };
-    }
-    
-    if (cardIndexToGive < 0 || cardIndexToGive >= player.hand.length) {
-      return { success: false, message: "Carte invalide à donner" };
-    }
-    
-    if (targetPlayer.hand.length === 0) {
-      return { success: false, message: "L'adversaire n'a pas de cartes" };
-    }
-    
-    // Voler une carte au hasard de l'adversaire
-    const randomIndex = Math.floor(Math.random() * targetPlayer.hand.length);
-    const stolenCard = targetPlayer.hand.splice(randomIndex, 1)[0];
-    
-    // Donner une carte à l'adversaire
-    const givenCard = player.hand.splice(cardIndexToGive, 1)[0];
-    
-    // Échanger les cartes
-    player.hand.push(stolenCard);
-    targetPlayer.hand.push(givenCard);
-    
-    return {
-      success: true,
-      message: `🔄 ${player.name} a troqué ${givenCard.name} contre ${stolenCard.name} avec ${targetPlayer.name} !`,
-      stolenCard: stolenCard,
-      givenCard: givenCard
-    };
-  }
-
   isGameOver() {
     return this.deck.length === 0 && this.discardPile.length === 0;
   }
@@ -1175,26 +1082,6 @@ io.on('connection', (socket) => {
         }
       }
       
-      // Si c'est une carte Chance, permettre de choisir dans la défausse
-      if (result.needsDiscardPick) {
-        socket.emit('chance-discard-pick', {
-          message: result.message,
-          discardPile: game.discardPile
-        });
-        return; // Ne pas piocher automatiquement, attendre le choix
-      }
-      
-      // Si c'est une carte Troc, permettre de choisir la carte à donner
-      if (result.needsTrocCardSelection) {
-        socket.emit('troc-card-selection', {
-          message: result.message,
-          targetPlayerId: result.targetPlayerId,
-          targetPlayerName: result.targetPlayerName,
-          playerHand: game.getPlayerData(socket.id).hand
-        });
-        return; // Ne pas piocher automatiquement, attendre le choix
-      }
-      
       // Si c'est un Tsunami, envoyer les nouvelles mains à tous les joueurs
       if (result.tsunami) {
         game.players.forEach(p => {
@@ -1203,19 +1090,6 @@ io.on('connection', (socket) => {
             playerState: game.getPlayerData(p.id),
             tsunami: true
           });
-        });
-        
-        // Faire piocher le joueur qui a joué le Tsunami jusqu'à 5 cartes
-        while (player.hand.length < 5 && game.deck.length > 0) {
-          const drawnCard = game.drawCard(socket.id);
-          if (!drawnCard) break;
-        }
-        
-        // Mettre à jour la main du joueur
-        socket.emit('hand-update', {
-          hand: game.getPlayerData(socket.id).hand,
-          playerState: game.getPlayerData(socket.id),
-          tsunami: true
         });
       } else {
         // Piocher automatiquement jusqu'à avoir 5 cartes
@@ -1246,36 +1120,26 @@ io.on('connection', (socket) => {
         return;
       }
       
-      // Tour suivant seulement si ce n'est pas un Tsunami (keepTurn)
-      if (!result.keepTurn) {
-        const turnResult = game.nextTurn();
-        
-        const nextPlayer = game.getCurrentPlayer();
-        console.log(`[TOUR] Passage au joueur: ${nextPlayer.name} (ID: ${nextPlayer.id})`);
-        
-        // Si des joueurs ont sauté leur tour, envoyer un message pour chacun
-        if (turnResult.skipped && turnResult.skippedPlayers) {
-          turnResult.skippedPlayers.forEach(skippedPlayer => {
-            if (skippedPlayer.reason === 'prison') {
-              io.to(playerInfo.roomId).emit('player-skipped-turn', {
-                playerName: skippedPlayer.name,
-                reason: `⛓️ ${skippedPlayer.name} est en prison !`
-              });
-            } else {
-              io.to(playerInfo.roomId).emit('player-skipped-turn', {
-                playerName: skippedPlayer.name,
-                reason: `⏭️ ${skippedPlayer.name} saute son tour !`
-              });
-            }
-          });
-        }
-      } else {
-        // Si le tour n'est pas passé (Tsunami), notifier que le joueur continue
-        io.to(playerInfo.roomId).emit('card-played', {
-          playerId: socket.id,
-          playerName: playerInfo.playerName,
-          message: `🌊 ${playerInfo.playerName} peut rejouer !`,
-          gameState: game.getPublicGameState()
+      // Tour suivant seulement APRÈS avoir pioché
+      const turnResult = game.nextTurn();
+      
+      const nextPlayer = game.getCurrentPlayer();
+      console.log(`[TOUR] Passage au joueur: ${nextPlayer.name} (ID: ${nextPlayer.id})`);
+      
+      // Si des joueurs ont sauté leur tour, envoyer un message pour chacun
+      if (turnResult.skipped && turnResult.skippedPlayers) {
+        turnResult.skippedPlayers.forEach(skippedPlayer => {
+          if (skippedPlayer.reason === 'prison') {
+            io.to(playerInfo.roomId).emit('player-skipped-turn', {
+              playerName: skippedPlayer.name,
+              reason: `⛓️ ${skippedPlayer.name} est en prison !`
+            });
+          } else {
+            io.to(playerInfo.roomId).emit('player-skipped-turn', {
+              playerName: skippedPlayer.name,
+              reason: `⏭️ ${skippedPlayer.name} saute son tour !`
+            });
+          }
         });
       }
       
@@ -1435,92 +1299,6 @@ io.on('connection', (socket) => {
           }
         }, 1000); // 1 seconde de délai pour le suspense
       }
-    } else {
-      socket.emit('error', { message: result.message });
-    }
-  });
-
-  // Choisir une carte de la défausse avec la carte Chance
-  socket.on('pick-from-discard-with-chance', ({ cardIndex }) => {
-    const playerInfo = players.get(socket.id);
-    if (!playerInfo) return;
-    
-    const game = games.get(playerInfo.roomId);
-    if (!game || !game.gameStarted) return;
-    
-    const result = game.pickFromDiscard(socket.id, cardIndex);
-    
-    if (result.success) {
-      io.to(playerInfo.roomId).emit('card-played', {
-        playerId: socket.id,
-        playerName: playerInfo.playerName,
-        message: result.message,
-        gameState: game.getPublicGameState()
-      });
-      
-      socket.emit('hand-update', {
-        hand: game.getPlayerData(socket.id).hand,
-        playerState: game.getPlayerData(socket.id)
-      });
-      
-      // Passer au joueur suivant
-      game.nextTurn();
-      io.to(playerInfo.roomId).emit('game-update', {
-        gameState: game.getPublicGameState()
-      });
-    } else {
-      socket.emit('error', { message: result.message });
-    }
-  });
-
-  // Exécuter le troc
-  socket.on('execute-troc', ({ targetPlayerId, cardIndexToGive }) => {
-    const playerInfo = players.get(socket.id);
-    if (!playerInfo) return;
-    
-    const game = games.get(playerInfo.roomId);
-    if (!game || !game.gameStarted) return;
-    
-    const result = game.executeTroc(socket.id, targetPlayerId, cardIndexToGive);
-    
-    if (result.success) {
-      const player = game.players.find(p => p.id === socket.id);
-      const targetPlayer = game.players.find(p => p.id === targetPlayerId);
-      
-      io.to(playerInfo.roomId).emit('card-played', {
-        playerId: socket.id,
-        playerName: playerInfo.playerName,
-        message: result.message,
-        gameState: game.getPublicGameState()
-      });
-      
-      // Mettre à jour les mains des deux joueurs
-      socket.emit('hand-update', {
-        hand: game.getPlayerData(socket.id).hand,
-        playerState: game.getPlayerData(socket.id)
-      });
-      
-      io.to(targetPlayerId).emit('hand-update', {
-        hand: game.getPlayerData(targetPlayerId).hand,
-        playerState: game.getPlayerData(targetPlayerId)
-      });
-      
-      // Faire piocher le joueur qui a joué le Troc pour revenir à 5 cartes
-      while (player.hand.length < 5 && game.deck.length > 0) {
-        const drawnCard = game.drawCard(socket.id);
-        if (!drawnCard) break;
-      }
-      
-      socket.emit('hand-update', {
-        hand: game.getPlayerData(socket.id).hand,
-        playerState: game.getPlayerData(socket.id)
-      });
-      
-      // Passer au joueur suivant
-      game.nextTurn();
-      io.to(playerInfo.roomId).emit('game-update', {
-        gameState: game.getPublicGameState()
-      });
     } else {
       socket.emit('error', { message: result.message });
     }

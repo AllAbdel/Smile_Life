@@ -135,11 +135,10 @@ const Documentation = ({ onClose }) => {
             <h4>✨ CARTES SPÉCIALES</h4>
             <ul>
               <li><strong>😈 Adultère</strong> : Permet de flirter en étant marié (pas de limite de flirts)</li>
-              <li><strong>🍀 Chance</strong> : Choisis n'importe quelle carte de la défausse !</li>
+              <li><strong>🍀 Chance</strong> : +2 smiles bonus immédiat</li>
               <li><strong>🎂 Anniversaire</strong> : +1 smile + Vole le dernier salaire de chaque adversaire !</li>
               <li><strong>🎰 Casino</strong> : Ouvre un duel de paris (voir section dédiée)</li>
-              <li><strong>🌊 Tsunami</strong> : Mélange TOUTES les cartes de TOUS les joueurs et redistribue ! Chaos total ! Tu rejoues ensuite.</li>
-              <li><strong>🔄 Troc</strong> : Choisis un adversaire : tu lui voles une carte au hasard et tu lui en donnes une en échange</li>
+              <li><strong>🌊 Tsunami</strong> : Mélange TOUTES les cartes de TOUS les joueurs et redistribue ! Chaos total !</li>
             </ul>
           </div>
         </section>
@@ -199,8 +198,6 @@ const Documentation = ({ onClose }) => {
             <li>Le <strong>Militaire</strong> protège contre les attentats</li>
             <li>Au <strong>Casino</strong>, parier en 2ème position est avantageux (gagne si égalité)</li>
             <li><strong>Anniversaire</strong> est très puissant : vole 1 salaire à chaque adversaire !</li>
-            <li><strong>Chance</strong> te permet de récupérer n'importe quelle carte dans la défausse !</li>
-            <li><strong>Troc</strong> est idéal pour échanger une mauvaise carte contre une meilleure au hasard !</li>
           </ul>
         </section>
 
@@ -222,7 +219,7 @@ const Documentation = ({ onClose }) => {
             <li>Les <strong>flirts Hôtel et Camping</strong> peuvent créer des bébés surprise !</li>
             <li>Tu ne peux avoir qu'<strong>1 seul métier à la fois</strong></li>
             <li>Certains métiers te font <strong>sauter un tour si tu démissionnes</strong></li>
-            <li>Le <strong>Tsunami</strong> redistribue TOUT : use-le quand tu es en retard ! Tu pioches et tu rejoues ensuite.</li>
+            <li>Le <strong>Tsunami</strong> redistribue TOUT : use-le quand tu es en retard !</li>
             <li>Au Casino, les paris sont <strong>pris de ta main</strong>, pas de tes salaires posés</li>
             <li>Les <strong>malus avec skip de tour</strong> sont cumulables (risque de sauter plusieurs tours)</li>
           </ul>

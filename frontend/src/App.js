@@ -51,15 +51,6 @@ function App() {
   const [showCasinoBetPrompt, setShowCasinoBetPrompt] = useState(false);
   const [casinoJustPlayed, setCasinoJustPlayed] = useState(false);
   
-  // État pour la carte Chance
-  const [showChanceDiscardPick, setShowChanceDiscardPick] = useState(false);
-  const [chanceDiscardPile, setChanceDiscardPile] = useState([]);
-  
-  // État pour la carte Troc
-  const [showTrocCardSelection, setShowTrocCardSelection] = useState(false);
-  const [trocTargetPlayerId, setTrocTargetPlayerId] = useState(null);
-  const [trocTargetPlayerName, setTrocTargetPlayerName] = useState('');
-  
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -175,21 +166,6 @@ function App() {
     newSocket.on('casino-prompt-bet', ({ message }) => {
       // Proposer au joueur de parier
       setShowCasinoBetPrompt(true);
-    });
-
-    newSocket.on('chance-discard-pick', ({ message, discardPile }) => {
-      // Permettre au joueur de choisir une carte de la défausse
-      addSystemMessage(message);
-      setChanceDiscardPile(discardPile);
-      setShowChanceDiscardPick(true);
-    });
-
-    newSocket.on('troc-card-selection', ({ message, targetPlayerId, targetPlayerName }) => {
-      // Permettre au joueur de choisir la carte à donner pour le troc
-      addSystemMessage(message);
-      setTrocTargetPlayerId(targetPlayerId);
-      setTrocTargetPlayerName(targetPlayerName);
-      setShowTrocCardSelection(true);
     });
 
     newSocket.on('casino-bet-placed', ({ playerName, message, gameState, betCount }) => {
@@ -489,22 +465,6 @@ function App() {
   const placeCasinoBet = (salaryIndex) => {
     socket.emit('casino-bet', { salaryCardIndex: salaryIndex });
     setShowCasinoBet(false);
-  };
-
-  const pickFromDiscardWithChance = (cardIndex) => {
-    socket.emit('pick-from-discard-with-chance', { cardIndex });
-    setShowChanceDiscardPick(false);
-    setChanceDiscardPile([]);
-  };
-
-  const executeTroc = (cardIndex) => {
-    socket.emit('execute-troc', { 
-      targetPlayerId: trocTargetPlayerId, 
-      cardIndexToGive: cardIndex 
-    });
-    setShowTrocCardSelection(false);
-    setTrocTargetPlayerId(null);
-    setTrocTargetPlayerName('');
   };
 
   const sendMessage = (e) => {
@@ -1173,61 +1133,6 @@ function App() {
             </div>
           </div>
         )}
-        
-        {/* Modal Chance - Choisir une carte de la défausse */}
-        {showChanceDiscardPick && (
-          <div className="modal-overlay" onClick={() => setShowChanceDiscardPick(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>🍀 Carte Chance ! Choisis une carte de la défausse</h3>
-              <div className="discard-picker-grid">
-                {chanceDiscardPile.slice().reverse().map((card, index) => {
-                  const actualIndex = chanceDiscardPile.length - 1 - index;
-                  return (
-                    <div 
-                      key={actualIndex} 
-                      className="discard-picker-card"
-                      onClick={() => pickFromDiscardWithChance(actualIndex)}
-                    >
-                      <div className="card-emoji-large">{getCardEmoji(card)}</div>
-                      <div className="card-name">{card.name}</div>
-                      <div className="card-smiles">😊 {card.smiles || 0}</div>
-                    </div>
-                  );
-                })}
-              </div>
-              <button className="btn btn-secondary" onClick={() => setShowChanceDiscardPick(false)}>
-                Annuler
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* Modal Troc - Choisir la carte à donner */}
-        {showTrocCardSelection && (
-          <div className="modal-overlay" onClick={() => setShowTrocCardSelection(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>🔄 Troc avec {trocTargetPlayerName}</h3>
-              <p>Choisis une carte de ta main à donner en échange</p>
-              <div className="discard-picker-grid">
-                {playerData?.hand.map((card, index) => (
-                  <div 
-                    key={index} 
-                    className="discard-picker-card"
-                    onClick={() => executeTroc(index)}
-                  >
-                    <div className="card-emoji-large">{getCardEmoji(card)}</div>
-                    <div className="card-name">{card.name}</div>
-                    <div className="card-smiles">😊 {card.smiles || 0}</div>
-                  </div>
-                ))}
-              </div>
-              <button className="btn btn-secondary" onClick={() => setShowTrocCardSelection(false)}>
-                Annuler
-              </button>
-            </div>
-          </div>
-        )}
-        
         {showDiscardPicker && (
           <div className="modal-overlay" onClick={() => setShowDiscardPicker(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
