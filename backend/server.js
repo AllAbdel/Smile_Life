@@ -361,12 +361,13 @@ class Game {
       
       case 'chance':
         // La carte Chance permet de choisir une carte de la défausse
-        player.playedCards.push(card);
+        // ⚠️ NE PAS ajouter à playedCards - la carte est retirée du jeu définitivement
         return { 
           success: true, 
           message: `${player.name} a joué la carte Chance ! 🍀`, 
           chanceActivated: true,
-          availableCards: this.discardPile.length
+          availableCards: this.discardPile.length,
+          cardRemovedFromGame: true // Indique que la carte est retirée du jeu
         };
       
       case 'special':
@@ -515,7 +516,13 @@ class Game {
           cardIndex++;
         }
         
-        return { success: true, message: `🌊 ${player.name} a déclenché un TSUNAMI ! Toutes les cartes ont été mélangées ! 🌊`, tsunami: true };
+        // ⚠️ NE PAS ajouter à playedCards - la carte Tsunami est retirée du jeu définitivement
+        return { 
+          success: true, 
+          message: `🌊 ${player.name} a déclenché un TSUNAMI ! Toutes les cartes ont été mélangées ! 🌊`, 
+          tsunami: true,
+          cardRemovedFromGame: true // Indique que la carte est retirée du jeu
+        };
       
       case 'casino':
         // Activer le casino
