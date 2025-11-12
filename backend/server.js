@@ -34,6 +34,8 @@ class Game {
     this.gameStarted = false;
     this.customCards = customCards || defaultCards;
     this.maxPlayers = 6;
+    this.casinoActive = false;
+    this.casinoBets = []; // {playerId, playerName, salaryCard, betAmount}
   }
 
   addPlayer(playerId, playerName) {
@@ -52,9 +54,11 @@ class Game {
       flirts: [],
       married: false,
       adultery: false,
+      adulteryFlirts: 0, // Nombre de flirts après adultère
       children: [],
       pets: [],
       salary: [],
+      housing: [], // Logements
       skipNextTurn: false,
       hasTakenFromDiscard: false,
       prisonTurns: 0
@@ -142,6 +146,14 @@ class Game {
       // Défausser la carte
       this.discardPile.push(card);
       player.hand.splice(cardIndex, 1);
+      
+      // Si on défausse une carte adultère qui était en jeu, la retirer des cartes jouées
+      if (card.type === 'adultery' && player.adultery) {
+        player.adultery = false;
+        player.adulteryFlirts = 0;
+        player.playedCards = player.playedCards.filter(c => c.type !== 'adultery');
+      }
+      
       return { success: true, message: "Carte défaussée" };
     }
 
@@ -256,6 +268,7 @@ class Game {
           return { success: false, message: "Vous êtes déjà en situation d'adultère" };
         }
         player.adultery = true;
+        player.adulteryFlirts = 0; // Réinitialiser le compteur de flirts après adultère
         player.playedCards.push(card);
         return { success: true, message: `${player.name} peut maintenant flirter en étant marié(e) !` };
       
@@ -265,6 +278,11 @@ class Game {
         }
         if (player.flirts.length >= 5 && !player.adultery) {
           return { success: false, message: "Maximum 5 flirts atteints" };
+        }
+        
+        // Si en situation d'adultère, incrémenter le compteur de flirts après adultère
+        if (player.adultery && player.married) {
+          player.adulteryFlirts++;
         }
         
         // Vérifier si un autre joueur a ce lieu comme DERNIER flirt
@@ -383,16 +401,106 @@ class Game {
       
       case 'travel':
         const cost = card.cost || 0;
-        if (player.salary.length < cost) {
-          return { success: false, message: `Coût: ${cost} salaires nécessaires` };
+        
+        // Calculer la valeur totale des salaires
+        const totalSalaryValue = player.salary.reduce((sum, s) => sum + (s.salaryValue || 1), 0);
+        
+        if (totalSalaryValue < cost) {
+          return { success: false, message: `Coût: ${cost} salaires nécessaires (vous avez ${totalSalaryValue})` };
         }
-        // Retirer les salaires nécessaires
-        for (let i = 0; i < cost; i++) {
-          player.salary.pop();
+        
+        // Retirer les salaires nécessaires intelligemment (en partant des plus gros)
+        let remaining = cost;
+        player.salary.sort((a, b) => (b.salaryValue || 1) - (a.salaryValue || 1)); // Trier par valeur décroissante
+        
+        while (remaining > 0 && player.salary.length > 0) {
+          const salary = player.salary[0];
+          const salaryValue = salary.salaryValue || 1;
+          
+          if (salaryValue <= remaining) {
+            // On peut utiliser ce salaire entièrement
+            player.salary.shift();
+            player.smiles = Math.max(0, player.smiles - (salary.smiles || 0));
+            remaining -= salaryValue;
+          } else {
+            // Le salaire vaut plus que ce qu'il reste à payer
+            // On ne peut pas "casser" un salaire, donc impossible de payer
+            return { success: false, message: `Impossible de payer exactement ${cost} salaires` };
+          }
         }
+        
         player.playedCards.push(card);
         player.smiles += card.smiles || 0;
         return { success: true, message: `${player.name} part en voyage à ${card.name}` };
+      
+      case 'housing':
+        let housingCost = card.cost || 0;
+        
+        // Réduction de 50% si marié
+        if (player.married && card.marriedDiscount) {
+          housingCost = Math.floor(housingCost / 2);
+        }
+        
+        // Calculer la valeur totale des salaires
+        const totalHousingSalary = player.salary.reduce((sum, s) => sum + (s.salaryValue || 1), 0);
+        
+        if (totalHousingSalary < housingCost) {
+          const discount = player.married && card.marriedDiscount ? ' (réduit car marié)' : '';
+          return { success: false, message: `Coût: ${housingCost} salaires${discount} nécessaires (vous avez ${totalHousingSalary})` };
+        }
+        
+        // Retirer les salaires nécessaires
+        let remainingHousing = housingCost;
+        player.salary.sort((a, b) => (b.salaryValue || 1) - (a.salaryValue || 1));
+        
+        while (remainingHousing > 0 && player.salary.length > 0) {
+          const salary = player.salary[0];
+          const salaryValue = salary.salaryValue || 1;
+          
+          if (salaryValue <= remainingHousing) {
+            player.salary.shift();
+            player.smiles = Math.max(0, player.smiles - (salary.smiles || 0));
+            remainingHousing -= salaryValue;
+          } else {
+            return { success: false, message: `Impossible de payer exactement ${housingCost} salaires` };
+          }
+        }
+        
+        player.housing.push(card);
+        player.playedCards.push(card);
+        player.smiles += card.smiles || 0;
+        return { success: true, message: `${player.name} a acheté ${card.name} !` };
+      
+      case 'tsunami':
+        // Mélanger et redistribuer toutes les cartes de tous les joueurs
+        const allCards = [];
+        
+        // Récupérer toutes les cartes en main de tous les joueurs
+        this.players.forEach(p => {
+          allCards.push(...p.hand);
+          p.hand = [];
+        });
+        
+        // Mélanger
+        for (let i = allCards.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allCards[i], allCards[j]] = [allCards[j], allCards[i]];
+        }
+        
+        // Redistribuer équitablement
+        let cardIndex = 0;
+        while (allCards.length > 0) {
+          this.players[cardIndex % this.players.length].hand.push(allCards.shift());
+          cardIndex++;
+        }
+        
+        return { success: true, message: `🌊 ${player.name} a déclenché un TSUNAMI ! Toutes les cartes ont été mélangées ! 🌊`, tsunami: true };
+      
+      case 'casino':
+        // Activer le casino
+        this.casinoActive = true;
+        player.playedCards.push(card);
+        return { success: true, message: `🎰 ${player.name} a ouvert le CASINO ! Tous les joueurs peuvent parier leurs salaires ! 🎰`, casinoOpened: true };
       
       case 'malus':
         if (isNegative) {
@@ -414,6 +522,16 @@ class Game {
           if (card.effect === 'prison') {
             if (!player.job || player.job.name !== 'Bandit') {
               return { success: false, message: `${player.name} n'est pas un Bandit` };
+            }
+          }
+          if (card.effect === 'attack') {
+            // Vérifier si un militaire est en jeu
+            const hasMilitary = this.players.some(p => p.job && p.job.preventAttacks);
+            if (hasMilitary) {
+              return { success: false, message: `Un Militaire empêche tous les attentats !` };
+            }
+            if (player.children.length === 0) {
+              return { success: false, message: `${player.name} n'a pas d'enfants` };
             }
           }
           
@@ -443,15 +561,18 @@ class Game {
           const marriageSmiles = marriageCard ? (marriageCard.smiles || 5) : 5;
           player.smiles = Math.max(0, player.smiles - marriageSmiles);
           
-          // Si en adultère, perdre TOUS les enfants et leurs smiles
-          if (player.adultery) {
+          // Si en adultère ET a reflirté au moins une fois, perdre TOUS les enfants
+          if (player.adultery && player.adulteryFlirts > 0) {
             const childrenSmiles = player.children.reduce((sum, child) => sum + (child.smiles || 3), 0);
             player.smiles = Math.max(0, player.smiles - childrenSmiles);
             player.children = [];
             player.playedCards = player.playedCards.filter(c => c.type !== 'child');
-            player.adultery = false; // Fin de l'adultère
-            player.playedCards = player.playedCards.filter(c => c.type !== 'adultery');
           }
+          
+          // Retirer la carte adultère
+          player.adultery = false;
+          player.adulteryFlirts = 0;
+          player.playedCards = player.playedCards.filter(c => c.type !== 'adultery');
         }
         break;
       
@@ -489,50 +610,62 @@ class Game {
         }
         break;
       
+      case 'attack':
+        // Attentat : tuer tous les enfants
+        const childrenSmiles = player.children.reduce((sum, child) => sum + (child.smiles || 3), 0);
+        player.smiles = Math.max(0, player.smiles - childrenSmiles);
+        player.children = [];
+        player.playedCards = player.playedCards.filter(c => c.type !== 'child');
+        break;
+      
       default:
         break;
     }
   }
 
   nextTurn() {
+    const skippedPlayers = [];
+    
+    // Passer au joueur suivant
     this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
     
-    // Réinitialiser le flag de défausse pour le nouveau joueur
-    const currentPlayer = this.players[this.currentPlayerIndex];
-    currentPlayer.hasTakenFromDiscard = false;
-    
-    // Vérifier si le joueur est en prison
-    if (currentPlayer.prisonTurns > 0) {
-      currentPlayer.prisonTurns--;
-      console.log(`[TOUR] ${currentPlayer.name} est en prison ! ${currentPlayer.prisonTurns} tours restants`);
+    // Boucle pour gérer les joueurs qui doivent sauter leur tour
+    let maxIterations = this.players.length; // Éviter une boucle infinie
+    while (maxIterations > 0) {
+      const currentPlayer = this.players[this.currentPlayerIndex];
+      currentPlayer.hasTakenFromDiscard = false;
       
-      const skippedPlayer = { name: currentPlayer.name, id: currentPlayer.id, reason: 'prison' };
+      // Vérifier si le joueur est en prison
+      if (currentPlayer.prisonTurns > 0) {
+        currentPlayer.prisonTurns--;
+        console.log(`[TOUR] ${currentPlayer.name} est en prison ! ${currentPlayer.prisonTurns} tours restants`);
+        
+        skippedPlayers.push({ name: currentPlayer.name, id: currentPlayer.id, reason: 'prison' });
+        
+        // Passer au joueur suivant
+        this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+        maxIterations--;
+        continue;
+      }
       
-      // Passer au joueur suivant
-      this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
-      this.players[this.currentPlayerIndex].hasTakenFromDiscard = false;
+      // Si le joueur suivant doit sauter son tour
+      if (currentPlayer.skipNextTurn) {
+        currentPlayer.skipNextTurn = false;
+        console.log(`[TOUR] ${currentPlayer.name} saute son tour !`);
+        
+        skippedPlayers.push({ name: currentPlayer.name, id: currentPlayer.id, reason: 'skip' });
+        
+        // Passer au joueur suivant
+        this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+        maxIterations--;
+        continue;
+      }
       
-      return { skipped: true, skippedPlayer };
+      // Le joueur actuel peut jouer
+      break;
     }
     
-    // Si le joueur suivant doit sauter son tour
-    if (currentPlayer.skipNextTurn) {
-      currentPlayer.skipNextTurn = false; // Réinitialiser le flag
-      console.log(`[TOUR] ${currentPlayer.name} saute son tour !`);
-      
-      // Retourner un message pour informer que le tour est sauté
-      const skippedPlayer = { name: currentPlayer.name, id: currentPlayer.id, reason: 'skip' };
-      
-      // Passer au joueur suivant
-      this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
-      
-      // Réinitialiser le flag pour le joueur suivant aussi
-      this.players[this.currentPlayerIndex].hasTakenFromDiscard = false;
-      
-      return { skipped: true, skippedPlayer };
-    }
-    
-    return { skipped: false };
+    return { skipped: skippedPlayers.length > 0, skippedPlayers };
   }
 
   getCurrentPlayer() {
@@ -569,8 +702,78 @@ class Game {
       })),
       currentPlayerIndex: this.currentPlayerIndex,
       deckSize: this.deck.length,
-      discardPile: this.discardPile.length > 0 ? [this.discardPile[this.discardPile.length - 1]] : [],
-      gameStarted: this.gameStarted
+      discardPile: this.discardPile, // Toute la défausse maintenant
+      gameStarted: this.gameStarted,
+      casinoActive: this.casinoActive,
+      casinoBets: this.casinoBets
+    };
+  }
+
+  placeCasinoBet(playerId, salaryCardIndex) {
+    const player = this.players.find(p => p.id === playerId);
+    if (!player) return { success: false, message: "Joueur invalide" };
+    
+    if (!this.casinoActive) {
+      return { success: false, message: "Le casino n'est pas ouvert" };
+    }
+    
+    if (salaryCardIndex >= player.salary.length) {
+      return { success: false, message: "Carte salaire invalide" };
+    }
+    
+    // Retirer la carte salaire de la main du joueur
+    const salaryCard = player.salary.splice(salaryCardIndex, 1)[0];
+    const betAmount = salaryCard.salaryValue || 1;
+    
+    // Retirer les smiles du salaire
+    player.smiles = Math.max(0, player.smiles - (salaryCard.smiles || 0));
+    
+    // Ajouter le pari
+    this.casinoBets.push({
+      playerId: player.id,
+      playerName: player.name,
+      salaryCard: salaryCard,
+      betAmount: betAmount
+    });
+    
+    return { success: true, message: `${player.name} a parié ${betAmount} salaire(s) au casino !` };
+  }
+
+  resolveCasinoBets() {
+    if (this.casinoBets.length === 0) {
+      return { success: false, message: "Aucun pari au casino" };
+    }
+    
+    // Tirer au sort un gagnant
+    const winnerBet = this.casinoBets[Math.floor(Math.random() * this.casinoBets.length)];
+    const winner = this.players.find(p => p.id === winnerBet.playerId);
+    
+    if (!winner) {
+      return { success: false, message: "Erreur: gagnant introuvable" };
+    }
+    
+    // Le gagnant récupère tous les salaires pariés
+    let totalWinnings = 0;
+    this.casinoBets.forEach(bet => {
+      winner.salary.push(bet.salaryCard);
+      winner.smiles += bet.salaryCard.smiles || 0;
+      totalWinnings += bet.betAmount;
+    });
+    
+    const losers = this.casinoBets
+      .filter(bet => bet.playerId !== winner.id)
+      .map(bet => bet.playerName);
+    
+    // Vider les paris
+    this.casinoBets = [];
+    
+    return { 
+      success: true, 
+      winner: winner.name,
+      winnerId: winner.id,
+      totalWinnings: totalWinnings,
+      losers: losers,
+      message: `🎰 ${winner.name} remporte ${totalWinnings} salaire(s) au casino ! 🎰`
     };
   }
 
@@ -795,16 +998,34 @@ io.on('connection', (socket) => {
         gameState: game.getPublicGameState()
       });
       
-      // Piocher automatiquement jusqu'à avoir 5 cartes
-      while (player.hand.length < 5 && game.deck.length > 0) {
-        const drawnCard = game.drawCard(socket.id);
-        if (!drawnCard) break;
+      // Si c'est un Casino qui est ouvert, notifier tous les joueurs
+      if (result.casinoOpened) {
+        io.to(playerInfo.roomId).emit('casino-opened', {
+          message: result.message
+        });
       }
       
-      socket.emit('hand-update', {
-        hand: game.getPlayerData(socket.id).hand,
-        playerState: game.getPlayerData(socket.id)
-      });
+      // Si c'est un Tsunami, envoyer les nouvelles mains à tous les joueurs
+      if (result.tsunami) {
+        game.players.forEach(p => {
+          io.to(p.id).emit('hand-update', {
+            hand: game.getPlayerData(p.id).hand,
+            playerState: game.getPlayerData(p.id),
+            tsunami: true
+          });
+        });
+      } else {
+        // Piocher automatiquement jusqu'à avoir 5 cartes
+        while (player.hand.length < 5 && game.deck.length > 0) {
+          const drawnCard = game.drawCard(socket.id);
+          if (!drawnCard) break;
+        }
+        
+        socket.emit('hand-update', {
+          hand: game.getPlayerData(socket.id).hand,
+          playerState: game.getPlayerData(socket.id)
+        });
+      }
       
       io.to(playerInfo.roomId).emit('game-update', {
         gameState: game.getPublicGameState()
@@ -828,19 +1049,21 @@ io.on('connection', (socket) => {
       const nextPlayer = game.getCurrentPlayer();
       console.log(`[TOUR] Passage au joueur: ${nextPlayer.name} (ID: ${nextPlayer.id})`);
       
-      // Si un joueur a sauté son tour, envoyer un message
-      if (turnResult.skipped) {
-        if (turnResult.skippedPlayer.reason === 'prison') {
-          io.to(playerInfo.roomId).emit('player-skipped-turn', {
-            playerName: turnResult.skippedPlayer.name,
-            reason: `⛓️ ${turnResult.skippedPlayer.name} est en prison !`
-          });
-        } else {
-          io.to(playerInfo.roomId).emit('player-skipped-turn', {
-            playerName: turnResult.skippedPlayer.name,
-            reason: `⏭️ ${turnResult.skippedPlayer.name} saute son tour !`
-          });
-        }
+      // Si des joueurs ont sauté leur tour, envoyer un message pour chacun
+      if (turnResult.skipped && turnResult.skippedPlayers) {
+        turnResult.skippedPlayers.forEach(skippedPlayer => {
+          if (skippedPlayer.reason === 'prison') {
+            io.to(playerInfo.roomId).emit('player-skipped-turn', {
+              playerName: skippedPlayer.name,
+              reason: `⛓️ ${skippedPlayer.name} est en prison !`
+            });
+          } else {
+            io.to(playerInfo.roomId).emit('player-skipped-turn', {
+              playerName: skippedPlayer.name,
+              reason: `⏭️ ${skippedPlayer.name} saute son tour !`
+            });
+          }
+        });
       }
       
       // Vérifier si la partie est terminée
@@ -901,6 +1124,99 @@ io.on('connection', (socket) => {
     io.to(playerInfo.roomId).emit('game-update', {
       gameState: game.getPublicGameState()
     });
+  });
+
+  // Prendre une carte spécifique de la défausse (avec carte Chance)
+  socket.on('take-discard-card', ({ cardIndex }) => {
+    const playerInfo = players.get(socket.id);
+    if (!playerInfo) return;
+    
+    const game = games.get(playerInfo.roomId);
+    if (!game || !game.gameStarted) return;
+    
+    const currentPlayer = game.getCurrentPlayer();
+    if (currentPlayer.id !== socket.id) {
+      socket.emit('error', { message: 'Ce n\'est pas votre tour' });
+      return;
+    }
+    
+    if (cardIndex < 0 || cardIndex >= game.discardPile.length) {
+      socket.emit('error', { message: 'Carte invalide' });
+      return;
+    }
+    
+    const card = game.discardPile.splice(cardIndex, 1)[0];
+    currentPlayer.hand.push(card);
+    
+    socket.emit('card-taken-from-discard', {
+      card,
+      hand: game.getPlayerData(socket.id).hand
+    });
+    
+    io.to(playerInfo.roomId).emit('game-update', {
+      gameState: game.getPublicGameState()
+    });
+  });
+
+  // Parier au casino
+  socket.on('casino-bet', ({ salaryCardIndex }) => {
+    const playerInfo = players.get(socket.id);
+    if (!playerInfo) return;
+    
+    const game = games.get(playerInfo.roomId);
+    if (!game || !game.gameStarted) return;
+    
+    const result = game.placeCasinoBet(socket.id, salaryCardIndex);
+    
+    if (result.success) {
+      const player = game.players.find(p => p.id === socket.id);
+      
+      io.to(playerInfo.roomId).emit('casino-bet-placed', {
+        playerName: playerInfo.playerName,
+        message: result.message,
+        gameState: game.getPublicGameState()
+      });
+      
+      socket.emit('hand-update', {
+        hand: game.getPlayerData(socket.id).hand,
+        playerState: game.getPlayerData(socket.id)
+      });
+    } else {
+      socket.emit('error', { message: result.message });
+    }
+  });
+
+  // Résoudre les paris du casino
+  socket.on('casino-resolve', () => {
+    const playerInfo = players.get(socket.id);
+    if (!playerInfo) return;
+    
+    const game = games.get(playerInfo.roomId);
+    if (!game || !game.gameStarted) return;
+    
+    const result = game.resolveCasinoBets();
+    
+    if (result.success) {
+      io.to(playerInfo.roomId).emit('casino-resolved', {
+        winner: result.winner,
+        winnerId: result.winnerId,
+        totalWinnings: result.totalWinnings,
+        losers: result.losers,
+        message: result.message,
+        gameState: game.getPublicGameState()
+      });
+      
+      // Mettre à jour la main du gagnant
+      const winner = game.players.find(p => p.id === result.winnerId);
+      if (winner) {
+        io.to(result.winnerId).emit('hand-update', {
+          hand: game.getPlayerData(result.winnerId).hand,
+          playerState: game.getPlayerData(result.winnerId)
+        });
+      }
+    } else {
+      socket.emit('error', { message: result.message });
+    }
   });
 
   // Démissionner

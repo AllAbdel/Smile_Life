@@ -160,6 +160,20 @@
       "quantity": 5
     },
     {
+      "id": "job-10",
+      "name": "Militaire",
+      "type": "job",
+      "requiredStudies": 0,
+      "maxSalaryLevel": 1,
+      "canStudyWhileWorking": false,
+      "canQuitInstantly": false,
+      "preventAttacks": true,
+      "smiles": 1,
+      "description": "Métier: Militaire | Études: 0 | Salaire max: Niv.1 | Empêche tous les attentats ! | Démission saute tour",
+      "image": "🪖",
+      "quantity": 5
+    },
+    {
       "id": "flirt-1",
       "name": "Flirt au Café",
       "type": "flirt",
@@ -261,8 +275,9 @@
       "name": "Salaire Niveau 1",
       "type": "salary",
       "salaryLevel": 1,
+      "salaryValue": 1,
       "smiles": 1,
-      "description": "Salaire de niveau 1",
+      "description": "Salaire de niveau 1 (vaut 1 salaire)",
       "image": "💰",
       "quantity": 15
     },
@@ -271,7 +286,8 @@
       "name": "Salaire Niveau 2",
       "type": "salary",
       "salaryLevel": 2,
-      "smiles": 1,
+      "salaryValue": 2,
+      "smiles": 2,
       "description": "Salaire de niveau 2 (vaut 2 salaires)",
       "image": "💰",
       "quantity": 10
@@ -281,7 +297,8 @@
       "name": "Salaire Niveau 3",
       "type": "salary",
       "salaryLevel": 3,
-      "smiles": 1,
+      "salaryValue": 3,
+      "smiles": 3,
       "description": "Salaire de niveau 3 (vaut 3 salaires)",
       "image": "💰",
       "quantity": 6
@@ -291,7 +308,8 @@
       "name": "Salaire Niveau 4",
       "type": "salary",
       "salaryLevel": 4,
-      "smiles": 2,
+      "salaryValue": 4,
+      "smiles": 4,
       "description": "Salaire de niveau 4 (vaut 4 salaires)",
       "image": "💰",
       "quantity": 4
@@ -334,6 +352,39 @@
       "smiles": 6,
       "description": "💰 Coût: 5 salaires | +6 smiles",
       "image": "🏝️",
+      "quantity": 2
+    },
+    {
+      "id": "housing-1",
+      "name": "Appartement",
+      "type": "housing",
+      "cost": 6,
+      "smiles": 3,
+      "marriedDiscount": true,
+      "description": "💰 Coût: 6 salaires (3 si marié) | +3 smiles",
+      "image": "🏢",
+      "quantity": 3
+    },
+    {
+      "id": "housing-2",
+      "name": "Maison",
+      "type": "housing",
+      "cost": 8,
+      "smiles": 4,
+      "marriedDiscount": true,
+      "description": "💰 Coût: 8 salaires (4 si marié) | +4 smiles",
+      "image": "🏠",
+      "quantity": 3
+    },
+    {
+      "id": "housing-3",
+      "name": "Villa",
+      "type": "housing",
+      "cost": 10,
+      "smiles": 5,
+      "marriedDiscount": true,
+      "description": "💰 Coût: 10 salaires (5 si marié) | +5 smiles",
+      "image": "🏰",
       "quantity": 2
     },
     {
@@ -397,6 +448,15 @@
       "quantity": 3
     },
     {
+      "id": "malus-7",
+      "name": "Attentat",
+      "type": "malus",
+      "effect": "attack",
+      "description": "Tue tous les enfants d'un joueur ciblé",
+      "image": "💣",
+      "quantity": 3
+    },
+    {
       "id": "special-1",
       "name": "Adultère",
       "type": "adultery",
@@ -430,6 +490,15 @@
       "smiles": 0,
       "description": "Ouvre le Casino ! Les joueurs peuvent parier leurs salaires",
       "image": "🎰",
+      "quantity": 1
+    },
+    {
+      "id": "special-5",
+      "name": "Tsunami",
+      "type": "tsunami",
+      "smiles": 0,
+      "description": "Mélange toutes les cartes de tous les joueurs et les redistribue !",
+      "image": "🌊",
       "quantity": 1
     }
   ]

@@ -3,6 +3,7 @@ import io from 'socket.io-client';
 import './App.css';
 import Documentation from './Documentation';
 import MediaPanel from './MediaPanel';
+import Confetti from './Confetti';
 
 // Détection automatique de l'adresse du serveur
 // Si tu veux forcer une IP spécifique, remplace par: 'http://TON_IP:3001'
@@ -32,6 +33,11 @@ function App() {
   const [showMedia, setShowMedia] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [currentMusic, setCurrentMusic] = useState(null);
+  const [expandedPlayers, setExpandedPlayers] = useState({}); // Pour les cartes déroulantes
+  const [showDiscardPicker, setShowDiscardPicker] = useState(false); // Pour la carte Chance
+  const [showCasinoBet, setShowCasinoBet] = useState(false); // Pour parier au casino
+  const [casinoAnimation, setCasinoAnimation] = useState(false); // Animation du casino
+  const [showConfetti, setShowConfetti] = useState(false); // Confettis pour célébrations
   
   const chatEndRef = useRef(null);
 
@@ -106,6 +112,7 @@ function App() {
       addSystemMessage(`${playerName}: ${message}`);
       setSelectedCardIndex(null);
       setSelectedTarget(null);
+      setSelectedAction('play-self'); // Réinitialiser l'action à "jouer sur moi"
     });
 
     newSocket.on('turn-changed', ({ currentPlayerId, currentPlayerName, gameState }) => {
@@ -138,10 +145,38 @@ function App() {
       }
     });
 
+    newSocket.on('casino-opened', ({ message }) => {
+      addSystemMessage(message);
+      setCasinoAnimation(true);
+      setTimeout(() => setCasinoAnimation(false), 3000);
+    });
+
+    newSocket.on('casino-bet-placed', ({ playerName, message, gameState }) => {
+      setGameData(gameState);
+      addSystemMessage(message);
+    });
+
+    newSocket.on('casino-resolved', ({ winner, totalWinnings, losers, message, gameState }) => {
+      setGameData(gameState);
+      addSystemMessage(message);
+      
+      // Animation de victoire avec confettis
+      setCasinoAnimation(true);
+      setShowConfetti(true);
+      setTimeout(() => {
+        setCasinoAnimation(false);
+        setShowConfetti(false);
+      }, 5000);
+    });
+
     newSocket.on('game-over', ({ winner, finalScores, stats }) => {
       setGameState('gameover');
       addSystemMessage(`🏆 ${winner} a gagné !`);
       setGameData(prev => ({ ...prev, finalScores, stats }));
+      
+      // Confettis pour la fin de partie
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 10000);
     });
 
     newSocket.on('chat-message', ({ playerName, message, timestamp }) => {
@@ -194,6 +229,14 @@ function App() {
       return;
     }
 
+    const card = playerData?.hand[selectedCardIndex];
+    
+    // Si c'est une carte Chance, ouvrir le sélecteur de défausse
+    if (card && card.id === 'special-2') {
+      setShowDiscardPicker(true);
+      return;
+    }
+
     if (selectedAction === 'play-opponent' && !selectedTarget) {
       setError('Sélectionnez un adversaire');
       return;
@@ -208,6 +251,35 @@ function App() {
 
   const takeDiscard = () => {
     socket.emit('take-discard');
+  };
+  
+  const takeDiscardCard = (cardIndex) => {
+    socket.emit('take-discard-card', { cardIndex });
+    setShowDiscardPicker(false);
+    // Jouer automatiquement la carte Chance
+    socket.emit('play-card', {
+      cardIndex: selectedCardIndex,
+      targetPlayerId: null,
+      action: 'play-self'
+    });
+  };
+  
+  const togglePlayerExpanded = (playerId) => {
+    setExpandedPlayers(prev => ({
+      ...prev,
+      [playerId]: !prev[playerId]
+    }));
+  };
+
+  const placeCasinoBet = (salaryIndex) => {
+    socket.emit('casino-bet', { salaryCardIndex: salaryIndex });
+    setShowCasinoBet(false);
+  };
+
+  const resolveCasino = () => {
+    if (window.confirm('Résoudre les paris du casino ? Un gagnant sera tiré au sort !')) {
+      socket.emit('casino-resolve');
+    }
   };
 
   const sendMessage = (e) => {
@@ -401,6 +473,9 @@ function App() {
   if (gameState === 'playing') {
     return (
       <div className="App game-view">
+        {/* Confettis */}
+        <Confetti active={showConfetti} />
+        
         {/* Panneaux latéraux */}
         {showDocs && <Documentation onClose={() => setShowDocs(false)} />}
         {showMedia && <MediaPanel onClose={() => setShowMedia(false)} socket={socket} />}
@@ -433,6 +508,7 @@ function App() {
                 .filter(p => p.id !== playerData?.id)
                 .map(player => {
                   const isCurrentPlayer = gameData.players[gameData.currentPlayerIndex]?.id === player.id;
+                  const isExpanded = expandedPlayers[player.id];
                   return (
                     <div 
                       key={player.id} 
@@ -460,23 +536,32 @@ function App() {
                         <div className="opponent-stat">🐾 Animaux: {player.pets.length}</div>
                       </div>
                       
-                      {/* Cartes posées */}
+                      {/* Cartes posées - déroulantes */}
                       <div className="opponent-played-cards">
-                        <div className="opponent-cards-title">Cartes posées:</div>
-                        <div className="opponent-cards-grid">
-                          {player.playedCards.slice(0, 10).map((card, idx) => (
-                            <div 
-                              key={idx} 
-                              className={`opponent-mini-card ${card.isMalus ? 'malus' : ''} ${card.type === 'job' ? 'job-card' : ''}`}
-                              title={card.description}
-                            >
-                              {getCardEmoji(card)}
-                            </div>
-                          ))}
-                          {player.playedCards.length > 10 && (
-                            <div className="opponent-mini-card more">+{player.playedCards.length - 10}</div>
-                          )}
+                        <div 
+                          className="opponent-cards-toggle"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            togglePlayerExpanded(player.id);
+                          }}
+                        >
+                          <span>📋 Cartes posées ({player.playedCards.length})</span>
+                          <span className="toggle-icon">{isExpanded ? '▼' : '▶'}</span>
                         </div>
+                        {isExpanded && (
+                          <div className="opponent-cards-grid">
+                            {player.playedCards.map((card, idx) => (
+                              <div 
+                                key={idx} 
+                                className={`opponent-mini-card ${card.isMalus ? 'malus' : ''} ${card.type === 'job' ? 'job-card' : ''}`}
+                                title={card.description}
+                              >
+                                <span className="card-mini-emoji">{getCardEmoji(card)}</span>
+                                <span className="card-mini-name">{card.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -491,11 +576,46 @@ function App() {
                   <div className="deck-count">{gameData?.deckSize} cartes</div>
                 </div>
                 
+                {/* Casino */}
+                {gameData?.casinoActive && (
+                  <div className={`casino-zone ${casinoAnimation ? 'casino-active' : ''}`}>
+                    <div className="casino-icon">🎰</div>
+                    <div className="casino-title">CASINO OUVERT</div>
+                    <div className="casino-bets-count">
+                      {gameData.casinoBets?.length || 0} pari(s)
+                    </div>
+                    {gameData.casinoBets && gameData.casinoBets.length > 0 && (
+                      <div className="casino-bets-list">
+                        {gameData.casinoBets.map((bet, idx) => (
+                          <div key={idx} className="casino-bet-item">
+                            {bet.playerName}: {bet.betAmount} 💰
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button 
+                      className="btn-casino-bet"
+                      onClick={() => setShowCasinoBet(true)}
+                    >
+                      Parier
+                    </button>
+                    {gameData.casinoBets && gameData.casinoBets.length > 0 && (
+                      <button 
+                        className="btn-casino-resolve"
+                        onClick={resolveCasino}
+                      >
+                        Tirer au sort
+                      </button>
+                    )}
+                  </div>
+                )}
+                
                 {gameData?.discardPile && gameData.discardPile.length > 0 && (
                   <div className="discard-pile" onClick={takeDiscard}>
                     <div className="card">
-                      {getCardEmoji(gameData.discardPile[0])}
+                      {getCardEmoji(gameData.discardPile[gameData.discardPile.length - 1])}
                     </div>
+                    <div className="discard-name">{gameData.discardPile[gameData.discardPile.length - 1].name}</div>
                     <button className="btn-small">Prendre</button>
                   </div>
                 )}
@@ -637,6 +757,69 @@ function App() {
         </div>
 
         {error && <div className="error-toast">{error}</div>}
+        
+        {/* Modal pour parier au casino */}
+        {showCasinoBet && playerData?.salary && playerData.salary.length > 0 && (
+          <div className="modal-overlay" onClick={() => setShowCasinoBet(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3>🎰 Choisissez un salaire à parier</h3>
+              <div className="casino-bet-grid">
+                {playerData.salary.map((salaryCard, index) => (
+                  <div 
+                    key={index} 
+                    className="casino-bet-card"
+                    onClick={() => placeCasinoBet(index)}
+                  >
+                    <div className="card-emoji-large">{getCardEmoji(salaryCard)}</div>
+                    <div className="card-name">{salaryCard.name}</div>
+                    <div className="card-value">Valeur: {salaryCard.salaryValue || 1}</div>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-secondary" onClick={() => setShowCasinoBet(false)}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {showCasinoBet && (!playerData?.salary || playerData.salary.length === 0) && (
+          <div className="modal-overlay" onClick={() => setShowCasinoBet(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3>❌ Aucun salaire à parier</h3>
+              <p>Vous n'avez pas de salaire à parier au casino !</p>
+              <button className="btn btn-secondary" onClick={() => setShowCasinoBet(false)}>
+                Fermer
+              </button>
+            </div>
+          </div>
+        )}
+        {showDiscardPicker && (
+          <div className="modal-overlay" onClick={() => setShowDiscardPicker(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3>🍀 Chance ! Choisissez une carte de la défausse</h3>
+              <div className="discard-picker-grid">
+                {gameData?.discardPile.slice().reverse().map((card, index) => {
+                  const actualIndex = gameData.discardPile.length - 1 - index;
+                  return (
+                    <div 
+                      key={actualIndex} 
+                      className="discard-picker-card"
+                      onClick={() => takeDiscardCard(actualIndex)}
+                    >
+                      <div className="card-emoji-large">{getCardEmoji(card)}</div>
+                      <div className="card-name">{card.name}</div>
+                      <div className="card-smiles">😊 {card.smiles || 0}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button className="btn btn-secondary" onClick={() => setShowDiscardPicker(false)}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -660,6 +843,9 @@ function App() {
 
     return (
       <div className="App">
+        {/* Confettis */}
+        <Confetti active={showConfetti} />
+        
         <div className="container">
           <h1 className="title">🏆 Partie terminée 🏆</h1>
           <div className="gameover-card">
