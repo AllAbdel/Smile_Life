@@ -323,6 +323,7 @@ function App() {
   };
   
   const togglePlayerExpanded = (playerId) => {
+    console.log('Toggle player expanded:', playerId, 'Current state:', expandedPlayers[playerId]);
     setExpandedPlayers(prev => ({
       ...prev,
       [playerId]: !prev[playerId]

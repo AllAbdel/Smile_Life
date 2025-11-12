@@ -1445,6 +1445,8 @@ body {
   align-items: center;
   transition: all 0.3s;
   user-select: none;
+  position: relative;
+  z-index: 5;
 }
 
 .opponent-cards-toggle:hover {
