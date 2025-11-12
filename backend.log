@@ -9,3 +9,22 @@
    - Wi-Fi: http://192.168.1.177:3001
 
 💡 Partage cette IP avec tes amis pour jouer en réseau local !
+Nouveau joueur connecté: Xt0jb79xEp3ADaa6AAAC
+Nouveau joueur connecté: H7wZYUl-NNGF6r44AAAF
+Partie créée: QJO61B par Abdel
+Abdenour a rejoint la partie QJO61B
+Partie QJO61B démarrée
+[TOUR] Passage au joueur: Abdenour (ID: H7wZYUl-NNGF6r44AAAF)
+[TOUR] Index joueur actuel: 1
+E:\Perso\Smile Life\backend\server.js:1227
+          currentPlayerId: nextPlayer.id,
+                           ^
+
+ReferenceError: nextPlayer is not defined
+    at Socket.<anonymous> (E:\Perso\Smile Life\backend\server.js:1227:28)
+    at Socket.emit (node:events:519:28)
+    at Socket.emitUntyped (E:\Perso\Smile Life\backend\node_modules\socket.io\dist\typed-events.js:69:22)
+    at E:\Perso\Smile Life\backend\node_modules\socket.io\dist\socket.js:697:39
+    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)
+
+Node.js v22.21.0

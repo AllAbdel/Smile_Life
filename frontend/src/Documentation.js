@@ -138,7 +138,7 @@ const Documentation = ({ onClose }) => {
               <li><strong>🍀 Chance</strong> : Choisis n'importe quelle carte de la défausse !</li>
               <li><strong>🎂 Anniversaire</strong> : +1 smile + Vole le dernier salaire de chaque adversaire !</li>
               <li><strong>🎰 Casino</strong> : Ouvre un duel de paris (voir section dédiée)</li>
-              <li><strong>🌊 Tsunami</strong> : Mélange TOUTES les cartes de TOUS les joueurs et redistribue ! Chaos total !</li>
+              <li><strong>🌊 Tsunami</strong> : Mélange TOUTES les cartes de TOUS les joueurs et redistribue ! Chaos total ! Tu rejoues ensuite.</li>
             </ul>
           </div>
         </section>
@@ -220,7 +220,7 @@ const Documentation = ({ onClose }) => {
             <li>Les <strong>flirts Hôtel et Camping</strong> peuvent créer des bébés surprise !</li>
             <li>Tu ne peux avoir qu'<strong>1 seul métier à la fois</strong></li>
             <li>Certains métiers te font <strong>sauter un tour si tu démissionnes</strong></li>
-            <li>Le <strong>Tsunami</strong> redistribue TOUT : use-le quand tu es en retard !</li>
+            <li>Le <strong>Tsunami</strong> redistribue TOUT : use-le quand tu es en retard ! Tu pioches et tu rejoues ensuite.</li>
             <li>Au Casino, les paris sont <strong>pris de ta main</strong>, pas de tes salaires posés</li>
             <li>Les <strong>malus avec skip de tour</strong> sont cumulables (risque de sauter plusieurs tours)</li>
           </ul>

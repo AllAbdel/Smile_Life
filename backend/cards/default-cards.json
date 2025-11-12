@@ -473,7 +473,7 @@
       "smiles": 0,
       "description": "Choisis n'importe quelle carte de la défausse !",
       "image": "🍀",
-      "quantity": 1
+      "quantity": 10
     },
     {
       "id": "special-3",
@@ -498,8 +498,17 @@
       "name": "Tsunami",
       "type": "tsunami",
       "smiles": 0,
-      "description": "Mélange toutes les cartes de tous les joueurs et les redistribue !",
+      "description": "Mélange toutes les cartes de tous les joueurs et les redistribue ! Tu pioches et tu rejoues.",
       "image": "🌊",
+      "quantity": 1
+    },
+    {
+      "id": "special-6",
+      "name": "Troc",
+      "type": "troc",
+      "smiles": 0,
+      "description": "Choisis un adversaire : tu lui voles une carte au hasard et tu lui en donnes une en échange",
+      "image": "🔄",
       "quantity": 10
     }
   ]
