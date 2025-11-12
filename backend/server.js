@@ -702,7 +702,7 @@ class Game {
         married: p.married,
         children: p.children,
         pets: p.pets,
-        salaryCount: p.salary.length
+        salaryCount: p.salary.reduce((sum, s) => sum + (s.salaryValue || 1), 0)
       })),
       currentPlayerIndex: this.currentPlayerIndex,
       deckSize: this.deck.length,
@@ -813,8 +813,8 @@ class Game {
 
     stats.mostMalus = calcMax('malus', p => p.playedCards.filter(c => c.isMalus).length);
     stats.mostStudies = calcMax('studies', p => p.studies);
-    stats.mostSalaryEnd = calcMax('salary', p => p.salary.length);
-    stats.mostSalaryTotal = calcMax('salaryTotal', p => p.playedCards.filter(c => c.type === 'salary').length);
+    stats.mostSalaryEnd = calcMax('salary', p => p.salary.reduce((sum, s) => sum + (s.salaryValue || 1), 0));
+    stats.mostSalaryTotal = calcMax('salaryTotal', p => p.playedCards.filter(c => c.type === 'salary').reduce((sum, s) => sum + (s.salaryValue || 1), 0));
     stats.mostTravels = calcMax('travels', p => p.playedCards.filter(c => c.type === 'travel').length);
     stats.mostFlirts = calcMax('flirts', p => p.flirts.length);
     stats.mostChildren = calcMax('children', p => p.children.length);
@@ -828,8 +828,8 @@ class Game {
       smiles: p.smiles,
       studies: p.studies,
       malus: p.playedCards.filter(c => c.isMalus).length,
-      salaryEnd: p.salary.length,
-      salaryTotal: p.playedCards.filter(c => c.type === 'salary').length,
+      salaryEnd: p.salary.reduce((sum, s) => sum + (s.salaryValue || 1), 0),
+      salaryTotal: p.playedCards.filter(c => c.type === 'salary').reduce((sum, s) => sum + (s.salaryValue || 1), 0),
       travels: p.playedCards.filter(c => c.type === 'travel').length,
       flirts: p.flirts.length,
       children: p.children.length,
