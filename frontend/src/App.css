@@ -622,6 +622,13 @@ body {
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
+.empty-discard {
+  background: #f5f5f5;
+  border: 3px dashed #ccc;
+  color: #999;
+  opacity: 0.7;
+}
+
 .btn-small {
   padding: 5px 15px;
   background: #4CAF50;

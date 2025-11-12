@@ -914,24 +914,34 @@ function App() {
                   </div>
                 )}
                 
-                {gameData?.discardPile && gameData.discardPile.length > 0 && (
-                  <div 
-                    className={`discard-pile ${dropZoneActive === 'discard' ? 'drop-zone-active' : ''} ${isMyTurn() && draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === 'discard' ? 'shake' : ''}`}
-                    onClick={takeDiscard}
-                    onDragOver={(e) => handleDragOver(e, 'discard')}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, { type: 'discard' })}
-                  >
-                    {dropZoneActive === 'discard' && (
-                      <div className="drop-hint-discard">🗑️ Défausser ici</div>
-                    )}
-                    <div className="card">
-                      {getCardEmoji(gameData.discardPile[gameData.discardPile.length - 1])}
-                    </div>
-                    <div className="discard-name">{gameData.discardPile[gameData.discardPile.length - 1].name}</div>
-                    <button className="btn-small">Prendre</button>
-                  </div>
-                )}
+                {/* Pile de défausse - toujours visible pour permettre le drag & drop */}
+                <div 
+                  className={`discard-pile ${dropZoneActive === 'discard' ? 'drop-zone-active' : ''} ${isMyTurn() && draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === 'discard' ? 'shake' : ''}`}
+                  onClick={gameData?.discardPile && gameData.discardPile.length > 0 ? takeDiscard : undefined}
+                  onDragOver={(e) => handleDragOver(e, 'discard')}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, { type: 'discard' })}
+                >
+                  {dropZoneActive === 'discard' && (
+                    <div className="drop-hint-discard">🗑️ Défausser ici</div>
+                  )}
+                  {gameData?.discardPile && gameData.discardPile.length > 0 ? (
+                    <>
+                      <div className="card">
+                        {getCardEmoji(gameData.discardPile[gameData.discardPile.length - 1])}
+                      </div>
+                      <div className="discard-name">{gameData.discardPile[gameData.discardPile.length - 1].name}</div>
+                      <button className="btn-small">Prendre</button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="card empty-discard">
+                        🗑️
+                      </div>
+                      <div className="discard-name">Défausse vide</div>
+                    </>
+                  )}
+                </div>
               </div>
 
               {isMyTurn() && (
