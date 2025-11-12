@@ -1832,3 +1832,349 @@ body {
   font-weight: bold;
 }
 
+/* ========================================
+   🎨 DRAG & DROP SYSTEM
+   ======================================== */
+
+/* Curseur pendant le drag */
+body.dragging-card {
+  cursor: grabbing !important;
+}
+
+body.dragging-card * {
+  cursor: grabbing !important;
+}
+
+/* Carte en cours de drag */
+.card-hand.dragging {
+  opacity: 0.4;
+  transform: scale(0.95) rotate(2deg);
+  transition: all 0.2s ease;
+}
+
+/* Carte draggable (au survol) */
+.card-hand[draggable="true"] {
+  cursor: grab;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hand[draggable="true"]:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Zones droppables activées pendant le drag */
+.droppable {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Animation de pulsation pour les zones valides */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(76, 175, 80, 0.8);
+  }
+}
+
+/* Zone de drop active (survolée) */
+.drop-zone-active {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.2) 0%, rgba(129, 199, 132, 0.3) 100%) !important;
+  border: 3px dashed #4CAF50 !important;
+  animation: pulseGlow 1.5s ease-in-out infinite;
+  transform: scale(1.02);
+  z-index: 10;
+}
+
+/* Hints de drop (textes indicateurs) */
+.drop-hint,
+.drop-hint-self,
+.drop-hint-opponent,
+.drop-hint-discard {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(76, 175, 80, 0.95);
+  color: white;
+  padding: 15px 30px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 1.3em;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  pointer-events: none;
+  animation: bounceHint 0.6s ease-in-out infinite;
+  white-space: nowrap;
+}
+
+@keyframes bounceHint {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+.drop-hint-opponent {
+  background: rgba(244, 67, 54, 0.95);
+}
+
+.drop-hint-discard {
+  background: rgba(158, 158, 158, 0.95);
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 15px;
+  font-size: 1em;
+}
+
+/* Casino zone droppable */
+.casino-zone.droppable {
+  border-color: #FFD700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.casino-zone.drop-zone-active {
+  background: linear-gradient(135deg, rgba(255, 140, 0, 0.3) 0%, rgba(255, 215, 0, 0.4) 100%) !important;
+  border-color: #FFD700 !important;
+  animation: pulseGlowGold 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseGlowGold {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.9);
+  }
+}
+
+/* Défausse droppable */
+.discard-pile.droppable {
+  position: relative;
+}
+
+.discard-pile.drop-zone-active {
+  background: linear-gradient(135deg, rgba(158, 158, 158, 0.3) 0%, rgba(189, 189, 189, 0.4) 100%) !important;
+  border: 3px dashed #9E9E9E !important;
+}
+
+/* Zone du joueur (self) droppable */
+.player-area.droppable {
+  border-color: #4CAF50;
+}
+
+.player-area.drop-zone-active {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(200, 255, 200, 0.3) 100%) !important;
+  border-color: #4CAF50 !important;
+}
+
+/* Adversaires droppables */
+.opponent-card.droppable {
+  border-color: rgba(244, 67, 54, 0.6);
+  cursor: pointer;
+}
+
+.opponent-card.drop-zone-active {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 200, 200, 0.4) 100%) !important;
+  border: 3px dashed #F44336 !important;
+  transform: scale(1.03);
+}
+
+/* Feedback visuel : bordure quand on drag une carte */
+body.dragging-card .player-area.droppable {
+  border: 2px dashed rgba(76, 175, 80, 0.5);
+}
+
+body.dragging-card .opponent-card.droppable {
+  border: 2px dashed rgba(244, 67, 54, 0.5);
+}
+
+body.dragging-card .casino-zone.droppable {
+  border: 2px dashed rgba(255, 215, 0, 0.6);
+}
+
+body.dragging-card .discard-pile.droppable {
+  border: 2px dashed rgba(158, 158, 158, 0.5);
+}
+
+/* Animation d'entrée pour les hints */
+.drop-hint,
+.drop-hint-self,
+.drop-hint-opponent,
+.drop-hint-discard {
+  animation: fadeInBounce 0.3s ease-out, bounceHint 0.6s ease-in-out infinite 0.3s;
+}
+
+@keyframes fadeInBounce {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Rendre les zones plus visibles pendant le drag */
+body.dragging-card .droppable {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+body.dragging-card .droppable::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Mobile/Touch : désactiver le drag sur petits écrans */
+@media (max-width: 768px) {
+  .card-hand[draggable="true"] {
+    cursor: pointer;
+  }
+  
+  /* On peut garder le système de clic classique sur mobile */
+}
+
+/* Améliorer la visibilité des zones pendant le drag */
+body.dragging-card .game-board {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* ========================================
+   FIN DRAG & DROP SYSTEM
+   ======================================== */
+
+/* ========================================
+   🎨 DRAG GHOST (TRAINÉE VISUELLE)
+   ======================================== */
+
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  opacity: 0.8;
+  transition: opacity 0.1s ease;
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
+}
+
+.drag-ghost-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 15px;
+  padding: 15px;
+  border: 3px solid #4CAF50;
+  min-width: 150px;
+  text-align: center;
+  animation: ghostFloat 0.6s ease-in-out infinite;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes ghostFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(2deg);
+  }
+}
+
+.drag-ghost-card .card-emoji-large {
+  font-size: 3em;
+  margin-bottom: 8px;
+}
+
+.drag-ghost-card .card-name {
+  font-size: 1em;
+  font-weight: bold;
+  color: #333;
+}
+
+/* ========================================
+   🎯 SHAKE ANIMATION (ZONE INVALIDE)
+   ======================================== */
+
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+  20%, 40%, 60%, 80% { transform: translateX(10px); }
+}
+
+.shake {
+  animation: shakeError 0.5s ease;
+  border-color: #F44336 !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 100, 100, 0.3) 100%) !important;
+}
+
+/* ========================================
+   🎰 CASINO PROMPT (PARI AUTOMATIQUE)
+   ======================================== */
+
+.casino-prompt {
+  text-align: center;
+  animation: slideInBounce 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes slideInBounce {
+  from {
+    opacity: 0;
+    transform: translateY(-100px) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.casino-prompt h3 {
+  font-size: 2em;
+  margin-bottom: 15px;
+  color: #FF8C00;
+}
+
+.casino-prompt p {
+  font-size: 1.2em;
+  margin: 10px 0;
+  color: #333;
+}
+
+.casino-prompt .hint-text {
+  font-size: 0.95em;
+  color: #666;
+  font-style: italic;
+  background: rgba(76, 175, 80, 0.1);
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: 15px;
+}
+
+.casino-prompt-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 25px;
+}
+
+.casino-prompt-actions .btn {
+  min-width: 150px;
+  font-size: 1.1em;
+  padding: 12px 25px;
+}
+
+/* ========================================
+   FIN NOUVELLES ANIMATIONS
+   ======================================== */

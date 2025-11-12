@@ -143,7 +143,7 @@
       "smiles": 5,
       "description": "Métier: Bandit | Études: 0 | Salaire max: Niv.4 | Ne peut pas être licencié ! | Démission saute tour",
       "image": "🦹",
-      "quantity": 5
+      "quantity": 1
     },
     {
       "id": "job-9",
@@ -157,7 +157,7 @@
       "smiles": 2,
       "description": "Métier: Policier | Études: 2 | Salaire max: Niv.1 | Arrête automatiquement les bandits ! | Démission saute tour",
       "image": "👮",
-      "quantity": 5
+      "quantity": 1
     },
     {
       "id": "job-10",
@@ -171,7 +171,7 @@
       "smiles": 1,
       "description": "Métier: Militaire | Études: 0 | Salaire max: Niv.1 | Empêche tous les attentats ! | Démission saute tour",
       "image": "🪖",
-      "quantity": 5
+      "quantity": 1
     },
     {
       "id": "flirt-1",
@@ -445,7 +445,7 @@
       "prisonTurns": 3,
       "description": "Prison: saute 3 tours et perd le métier Bandit",
       "image": "⛓️",
-      "quantity": 3
+      "quantity": 1
     },
     {
       "id": "malus-7",
@@ -454,7 +454,7 @@
       "effect": "attack",
       "description": "Tue tous les enfants d'un joueur ciblé",
       "image": "💣",
-      "quantity": 3
+      "quantity": 2
     },
     {
       "id": "special-1",
@@ -490,7 +490,7 @@
       "smiles": 0,
       "description": "Ouvre le Casino ! Les joueurs peuvent parier leurs salaires",
       "image": "🎰",
-      "quantity": 1
+      "quantity": 10
     },
     {
       "id": "special-5",

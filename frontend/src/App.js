@@ -4,6 +4,7 @@ import './App.css';
 import Documentation from './Documentation';
 import MediaPanel from './MediaPanel';
 import Confetti from './Confetti';
+import SoundManager from './SoundManager';
 
 // Détection automatique de l'adresse du serveur
 // Si tu veux forcer une IP spécifique, remplace par: 'http://TON_IP:3001'
@@ -38,6 +39,17 @@ function App() {
   const [showCasinoBet, setShowCasinoBet] = useState(false); // Pour parier au casino
   const [casinoAnimation, setCasinoAnimation] = useState(false); // Animation du casino
   const [showConfetti, setShowConfetti] = useState(false); // Confettis pour célébrations
+  
+  // États pour le drag & drop
+  const [draggedCardIndex, setDraggedCardIndex] = useState(null);
+  const [dropZoneActive, setDropZoneActive] = useState(null); // Zone de drop survolée
+  const [dragGhostPos, setDragGhostPos] = useState({ x: 0, y: 0 }); // Position du fantôme
+  const [showDragGhost, setShowDragGhost] = useState(false); // Afficher le fantôme
+  const [shakeZone, setShakeZone] = useState(null); // Zone qui shake en cas d'erreur
+  
+  // État pour le pari automatique au casino
+  const [showCasinoBetPrompt, setShowCasinoBetPrompt] = useState(false);
+  const [casinoJustPlayed, setCasinoJustPlayed] = useState(false);
   
   const chatEndRef = useRef(null);
 
@@ -145,19 +157,36 @@ function App() {
       }
     });
 
-    newSocket.on('casino-opened', ({ message }) => {
+    newSocket.on('casino-opened', ({ message, playerId, playerName }) => {
       addSystemMessage(message);
       setCasinoAnimation(true);
       setTimeout(() => setCasinoAnimation(false), 3000);
     });
-
-    newSocket.on('casino-bet-placed', ({ playerName, message, gameState }) => {
-      setGameData(gameState);
-      addSystemMessage(message);
+    
+    newSocket.on('casino-prompt-bet', ({ message }) => {
+      // Proposer au joueur de parier
+      setShowCasinoBetPrompt(true);
     });
 
-    newSocket.on('casino-resolved', ({ winner, totalWinnings, losers, message, gameState }) => {
+    newSocket.on('casino-bet-placed', ({ playerName, message, gameState, betCount }) => {
       setGameData(gameState);
+      addSystemMessage(message);
+      
+      // Afficher le nombre de paris
+      if (betCount === 1) {
+        addSystemMessage("🎰 En attente d'un adversaire pour le duel...");
+      }
+    });
+
+    newSocket.on('casino-resolved', ({ winner, winnerId, loser, loserId, winnerLevel, loserLevel, sameLevel, totalWinnings, message, gameState }) => {
+      setGameData(gameState);
+      
+      // Message détaillé du résultat
+      const resultMessage = sameLevel
+        ? `🎰 DUEL CASINO 🎰\n${winner} (Niv.${winnerLevel}) VS ${loser} (Niv.${loserLevel})\nMême niveau ! Le 2ème joueur (${winner}) gagne !`
+        : `🎰 DUEL CASINO 🎰\n${winner} (Niv.${winnerLevel}) VS ${loser} (Niv.${loserLevel})\nNiveaux différents ! Le 1er joueur (${winner}) gagne !`;
+      
+      addSystemMessage(resultMessage);
       addSystemMessage(message);
       
       // Animation de victoire avec confettis
@@ -270,6 +299,168 @@ function App() {
       [playerId]: !prev[playerId]
     }));
   };
+  
+  // ========== DRAG & DROP SYSTEM ==========
+  
+  // Commence le drag d'une carte
+  const handleDragStart = (e, cardIndex) => {
+    // Seulement si c'est notre tour
+    if (!isMyTurn()) {
+      e.preventDefault();
+      return;
+    }
+    
+    // 🎵 Son de "whoosh"
+    SoundManager.play('whoosh');
+    
+    setDraggedCardIndex(cardIndex);
+    setSelectedCardIndex(cardIndex);
+    setShowDragGhost(true);
+    
+    // Visuel de la carte en train d'être dragged
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('cardIndex', cardIndex);
+    
+    // Image fantôme transparente (on va utiliser notre propre ghost)
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(img, 0, 0);
+    
+    // Ajouter une classe au body pour indiquer qu'on drag
+    document.body.classList.add('dragging-card');
+  };
+  
+  const handleDrag = (e) => {
+    if (e.clientX === 0 && e.clientY === 0) return; // Ignore les événements fantômes
+    setDragGhostPos({ x: e.clientX, y: e.clientY });
+  };
+  
+  const handleDragEnd = (e) => {
+    setDraggedCardIndex(null);
+    setDropZoneActive(null);
+    setShowDragGhost(false);
+    document.body.classList.remove('dragging-card');
+  };
+  
+  // Gestion des zones de drop
+  const handleDragOver = (e, zone) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropZoneActive(zone);
+  };
+  
+  const handleDragLeave = (e) => {
+    // Vérifier qu'on quitte vraiment la zone (pas juste un enfant)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDropZoneActive(null);
+    }
+  };
+  
+  // Drop sur une zone
+  const handleDrop = (e, dropData) => {
+    e.preventDefault();
+    
+    if (draggedCardIndex === null) return;
+    
+    const card = playerData?.hand[draggedCardIndex];
+    if (!card) return;
+    
+    let isValidDrop = true;
+    let errorMessage = '';
+    
+    // Validation et exécution selon la zone
+    switch (dropData.type) {
+      case 'self':
+        // Jouer sur soi
+        if (card.type === 'malus') {
+          isValidDrop = false;
+          errorMessage = '❌ Tu ne peux pas jouer un malus sur toi-même !';
+          setShakeZone('self');
+        } else {
+          // Vérifier si c'est un casino
+          if (card.id === 'special-1') {
+            // C'est un casino ! Vérifier si le joueur a un salaire
+            const hasSalary = playerData?.hand.some(c => c.type === 'salary' && c !== card);
+            if (hasSalary) {
+              setCasinoJustPlayed(true);
+              setShowCasinoBetPrompt(true);
+            }
+          }
+          
+          socket.emit('play-card', {
+            cardIndex: draggedCardIndex,
+            targetPlayerId: null,
+            action: 'play-self'
+          });
+        }
+        break;
+        
+      case 'opponent':
+        // Jouer sur un adversaire
+        if (card.type !== 'malus') {
+          isValidDrop = false;
+          errorMessage = '❌ Tu ne peux jouer que des malus sur les adversaires !';
+          setShakeZone(`opponent-${dropData.playerId}`);
+        } else {
+          socket.emit('play-card', {
+            cardIndex: draggedCardIndex,
+            targetPlayerId: dropData.playerId,
+            action: 'play-opponent'
+          });
+        }
+        break;
+        
+      case 'casino':
+        // Parier au casino - directement depuis la main
+        if (card.type !== 'salary') {
+          isValidDrop = false;
+          errorMessage = '❌ Tu ne peux parier que des cartes Salaire au casino !';
+          setShakeZone('casino');
+        } else {
+          // Trouver l'index du salaire dans la main
+          const salaryCardsInHand = playerData?.hand.filter(c => c.type === 'salary');
+          const salaryIndex = salaryCardsInHand.findIndex(c => c === card);
+          
+          socket.emit('casino-bet', { salaryCardIndex: salaryIndex });
+        }
+        break;
+        
+      case 'discard':
+        // Défausser
+        socket.emit('play-card', {
+          cardIndex: draggedCardIndex,
+          targetPlayerId: null,
+          action: 'discard'
+        });
+        break;
+        
+      default:
+        isValidDrop = false;
+        break;
+    }
+    
+    // Sons et animations
+    if (isValidDrop) {
+      // 🎵 Son de succès
+      SoundManager.play('ding');
+    } else {
+      // 🎵 Son d'erreur
+      SoundManager.play('error');
+      if (errorMessage) {
+        setError(errorMessage);
+      }
+      // Animation shake pendant 500ms
+      setTimeout(() => setShakeZone(null), 500);
+    }
+    
+    // Reset
+    setDraggedCardIndex(null);
+    setDropZoneActive(null);
+    setShowDragGhost(false);
+    document.body.classList.remove('dragging-card');
+  };
+  
+  // ========== FIN DRAG & DROP SYSTEM ==========
 
   const placeCasinoBet = (salaryIndex) => {
     socket.emit('casino-bet', { salaryCardIndex: salaryIndex });
@@ -519,6 +710,22 @@ function App() {
         {/* Confettis */}
         <Confetti active={showConfetti} />
         
+        {/* Fantôme de drag (trainée visuelle) */}
+        {showDragGhost && draggedCardIndex !== null && playerData?.hand[draggedCardIndex] && (
+          <div 
+            className="drag-ghost"
+            style={{
+              left: dragGhostPos.x,
+              top: dragGhostPos.y
+            }}
+          >
+            <div className="drag-ghost-card">
+              <div className="card-emoji-large">{getCardEmoji(playerData.hand[draggedCardIndex])}</div>
+              <div className="card-name">{playerData.hand[draggedCardIndex].name}</div>
+            </div>
+          </div>
+        )}
+        
         {/* Panneaux latéraux */}
         {showDocs && <Documentation onClose={() => setShowDocs(false)} />}
         {showMedia && <MediaPanel onClose={() => setShowMedia(false)} socket={socket} />}
@@ -555,9 +762,15 @@ function App() {
                   return (
                     <div 
                       key={player.id} 
-                      className={`opponent-card ${selectedTarget === player.id ? 'selected' : ''} ${isCurrentPlayer ? 'current-turn' : ''}`}
+                      className={`opponent-card ${selectedTarget === player.id ? 'selected' : ''} ${isCurrentPlayer ? 'current-turn' : ''} ${dropZoneActive === `opponent-${player.id}` ? 'drop-zone-active' : ''} ${isMyTurn() && draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === `opponent-${player.id}` ? 'shake' : ''}`}
                       onClick={() => setSelectedTarget(player.id)}
+                      onDragOver={(e) => handleDragOver(e, `opponent-${player.id}`)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, { type: 'opponent', playerId: player.id })}
                     >
+                      {dropZoneActive === `opponent-${player.id}` && (
+                        <div className="drop-hint-opponent">💢 Jouer un malus !</div>
+                      )}
                       <div className="opponent-header">
                         <strong>{player.name} {isCurrentPlayer && '🎯'}</strong>
                         <span className="smiles">😊 {player.smiles}</span>
@@ -633,9 +846,17 @@ function App() {
                 
                 {/* Casino */}
                 {gameData?.casinoActive && (
-                  <div className={`casino-zone ${casinoAnimation ? 'casino-active' : ''}`}>
+                  <div 
+                    className={`casino-zone ${casinoAnimation ? 'casino-active' : ''} ${dropZoneActive === 'casino' ? 'drop-zone-active' : ''} ${isMyTurn() && draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === 'casino' ? 'shake' : ''}`}
+                    onDragOver={(e) => handleDragOver(e, 'casino')}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, { type: 'casino' })}
+                  >
                     <div className="casino-icon">🎰</div>
                     <div className="casino-title">CASINO OUVERT</div>
+                    {dropZoneActive === 'casino' && (
+                      <div className="drop-hint">💰 Dépose ton salaire ici !</div>
+                    )}
                     <div className="casino-bets-count">
                       {gameData.casinoBets?.length || 0} pari(s)
                     </div>
@@ -666,7 +887,16 @@ function App() {
                 )}
                 
                 {gameData?.discardPile && gameData.discardPile.length > 0 && (
-                  <div className="discard-pile" onClick={takeDiscard}>
+                  <div 
+                    className={`discard-pile ${dropZoneActive === 'discard' ? 'drop-zone-active' : ''} ${isMyTurn() && draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === 'discard' ? 'shake' : ''}`}
+                    onClick={takeDiscard}
+                    onDragOver={(e) => handleDragOver(e, 'discard')}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, { type: 'discard' })}
+                  >
+                    {dropZoneActive === 'discard' && (
+                      <div className="drop-hint-discard">🗑️ Défausser ici</div>
+                    )}
                     <div className="card">
                       {getCardEmoji(gameData.discardPile[gameData.discardPile.length - 1])}
                     </div>
@@ -705,7 +935,15 @@ function App() {
             </div>
 
             {/* Votre zone de jeu */}
-            <div className={`player-area ${isMyTurn() ? 'my-turn' : ''}`}>
+            <div 
+              className={`player-area ${isMyTurn() ? 'my-turn' : ''} ${dropZoneActive === 'self' ? 'drop-zone-active' : ''} ${isMyTurn() && draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === 'self' ? 'shake' : ''}`}
+              onDragOver={(e) => handleDragOver(e, 'self')}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, { type: 'self' })}
+            >
+              {dropZoneActive === 'self' && (
+                <div className="drop-hint-self">✨ Jouer sur toi !</div>
+              )}
               <div className="player-header">
                 <h3>{playerData?.name} {isMyTurn() && '🎯 (Votre tour)'}</h3>
                 <span className="smiles-big">😊 {playerData?.smiles} Smiles</span>
@@ -759,13 +997,17 @@ function App() {
 
               {/* Main du joueur */}
               <div className="hand">
-                <h4>Votre main</h4>
+                <h4>Votre main {isMyTurn() && draggedCardIndex === null && '(Glisse une carte pour la jouer ✨)'}</h4>
                 <div className="cards-row">
                   {playerData?.hand.map((card, index) => (
                     <div
                       key={index}
-                      className={`card-hand ${selectedCardIndex === index ? 'selected' : ''}`}
+                      className={`card-hand ${selectedCardIndex === index ? 'selected' : ''} ${draggedCardIndex === index ? 'dragging' : ''}`}
                       onClick={() => setSelectedCardIndex(index)}
+                      draggable={isMyTurn()}
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDrag={handleDrag}
+                      onDragEnd={handleDragEnd}
                     >
                       <div className="card-emoji-large">{getCardEmoji(card)}</div>
                       <div className="card-info">
@@ -813,36 +1055,86 @@ function App() {
 
         {error && <div className="error-toast">{error}</div>}
         
-        {/* Modal pour parier au casino */}
-        {showCasinoBet && playerData?.salary && playerData.salary.length > 0 && (
+        {/* Prompt automatique de pari après avoir joué le casino */}
+        {showCasinoBetPrompt && (
+          <div className="modal-overlay">
+            <div className="modal-content casino-prompt">
+              <h3>🎰 Casino ouvert !</h3>
+              <p>Tu viens de jouer le Casino !</p>
+              <p><strong>Veux-tu parier un salaire immédiatement ?</strong></p>
+              <p className="hint-text">💡 Tu joueras 2 cartes ce tour et piocheras 2 à la fin</p>
+              <div className="casino-prompt-actions">
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setShowCasinoBetPrompt(false);
+                    setShowCasinoBet(true);
+                  }}
+                >
+                  Oui, parier ! 🎲
+                </button>
+                <button 
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowCasinoBetPrompt(false);
+                    setCasinoJustPlayed(false);
+                  }}
+                >
+                  Non, passer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Modal pour parier au casino - UTILISE LA MAIN maintenant */}
+        {showCasinoBet && (() => {
+          const salariesInHand = playerData?.hand.filter(card => card.type === 'salary') || [];
+          return salariesInHand.length > 0;
+        })() && (
           <div className="modal-overlay" onClick={() => setShowCasinoBet(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>🎰 Choisissez un salaire à parier</h3>
+              <h3>🎰 Choisissez un salaire de votre main à parier</h3>
               <div className="casino-bet-grid">
-                {playerData.salary.map((salaryCard, index) => (
-                  <div 
-                    key={index} 
-                    className="casino-bet-card"
-                    onClick={() => placeCasinoBet(index)}
-                  >
-                    <div className="card-emoji-large">{getCardEmoji(salaryCard)}</div>
-                    <div className="card-name">{salaryCard.name}</div>
-                    <div className="card-value">Valeur: {salaryCard.salaryValue || 1}</div>
-                  </div>
-                ))}
+                {playerData?.hand
+                  .map((card, originalIndex) => ({ card, originalIndex }))
+                  .filter(({ card }) => card.type === 'salary')
+                  .map(({ card, originalIndex }, salaryIndex) => (
+                    <div 
+                      key={originalIndex} 
+                      className="casino-bet-card"
+                      onClick={() => {
+                        placeCasinoBet(salaryIndex);
+                        setCasinoJustPlayed(false);
+                      }}
+                    >
+                      <div className="card-emoji-large">{getCardEmoji(card)}</div>
+                      <div className="card-name">{card.name}</div>
+                      <div className="card-value">Valeur: {card.salaryValue || 1}</div>
+                    </div>
+                  ))}
               </div>
-              <button className="btn btn-secondary" onClick={() => setShowCasinoBet(false)}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => {
+                  setShowCasinoBet(false);
+                  setCasinoJustPlayed(false);
+                }}
+              >
                 Annuler
               </button>
             </div>
           </div>
         )}
         
-        {showCasinoBet && (!playerData?.salary || playerData.salary.length === 0) && (
+        {showCasinoBet && (() => {
+          const salariesInHand = playerData?.hand.filter(card => card.type === 'salary') || [];
+          return salariesInHand.length === 0;
+        })() && (
           <div className="modal-overlay" onClick={() => setShowCasinoBet(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>❌ Aucun salaire à parier</h3>
-              <p>Vous n'avez pas de salaire à parier au casino !</p>
+              <h3>❌ Aucun salaire dans ta main</h3>
+              <p>Tu n'as pas de salaire dans ta main à parier au casino !</p>
               <button className="btn btn-secondary" onClick={() => setShowCasinoBet(false)}>
                 Fermer
               </button>

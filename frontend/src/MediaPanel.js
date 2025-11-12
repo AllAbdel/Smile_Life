@@ -15,6 +15,7 @@ const MediaPanel = ({ onClose, socket }) => {
 
   const sounds = [
     { name: 'Bravo !', emoji: '👏', file: 'https://www.myinstants.com/media/sounds/applause-3.mp3' },
+    { name: 'Alice 💕', emoji: '👩', file: '/assets/alice.mp3', local: true },
     { name: 'Fail', emoji: '💀', file: 'https://www.myinstants.com/media/sounds/sad-trombone.mp3' },
     { name: 'Victoire', emoji: '🏆', file: 'https://www.myinstants.com/media/sounds/victory_1.mp3' },
     { name: 'Nope', emoji: '🚫', file: 'https://www.myinstants.com/media/sounds/wrong-answer-sound-effect.mp3' },

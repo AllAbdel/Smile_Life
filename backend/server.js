@@ -35,7 +35,8 @@ class Game {
     this.customCards = customCards || defaultCards;
     this.maxPlayers = 6;
     this.casinoActive = false;
-    this.casinoBets = []; // {playerId, playerName, salaryCard, betAmount}
+    this.casinoBets = []; // Maintenant limité à 2 paris max
+    this.casinoOpenedBy = null; // ID du joueur qui a ouvert le casino
   }
 
   addPlayer(playerId, playerName) {
@@ -503,8 +504,14 @@ class Game {
       case 'casino':
         // Activer le casino
         this.casinoActive = true;
+        this.casinoOpenedBy = player.id;
         player.playedCards.push(card);
-        return { success: true, message: `🎰 ${player.name} a ouvert le CASINO ! Tous les joueurs peuvent parier leurs salaires ! 🎰`, casinoOpened: true };
+        return { 
+          success: true, 
+          message: `🎰 ${player.name} a ouvert le CASINO ! Le premier à parier affronte le suivant dans un duel ! 🎰`, 
+          casinoOpened: true,
+          shouldPromptBet: true // Indique qu'on doit proposer au joueur de parier
+        };
       
       case 'malus':
         if (isNegative) {
@@ -721,63 +728,112 @@ class Game {
       return { success: false, message: "Le casino n'est pas ouvert" };
     }
     
-    if (salaryCardIndex >= player.salary.length) {
-      return { success: false, message: "Carte salaire invalide" };
+    // Vérifier qu'il y a moins de 2 paris (duel à 2)
+    if (this.casinoBets.length >= 2) {
+      return { success: false, message: "Le casino est complet (2 joueurs maximum)" };
     }
     
-    // Retirer la carte salaire de la main du joueur
-    const salaryCard = player.salary.splice(salaryCardIndex, 1)[0];
+    // Vérifier que le joueur n'a pas déjà parié
+    if (this.casinoBets.some(bet => bet.playerId === playerId)) {
+      return { success: false, message: "Tu as déjà parié au casino !" };
+    }
+    
+    // Prendre le salaire de la MAIN
+    const salaryCardsInHand = player.hand.filter(card => card.type === 'salary');
+    
+    if (salaryCardIndex >= salaryCardsInHand.length) {
+      return { success: false, message: "Carte salaire invalide dans votre main" };
+    }
+    
+    const salaryCard = salaryCardsInHand[salaryCardIndex];
+    
+    // Trouver l'index réel dans la main
+    const realIndex = player.hand.findIndex(card => card === salaryCard);
+    
+    // Retirer la carte de la main
+    player.hand.splice(realIndex, 1);
+    
     const betAmount = salaryCard.salaryValue || 1;
     
-    // Retirer les smiles du salaire
-    player.smiles = Math.max(0, player.smiles - (salaryCard.smiles || 0));
-    
-    // Ajouter le pari
+    // Ajouter le pari CACHÉ
     this.casinoBets.push({
       playerId: player.id,
       playerName: player.name,
       salaryCard: salaryCard,
-      betAmount: betAmount
+      betAmount: betAmount // Le niveau est caché des autres joueurs
     });
     
-    return { success: true, message: `${player.name} a parié ${betAmount} salaire(s) au casino !` };
+    // Si c'est le 2ème pari, résoudre automatiquement le duel
+    if (this.casinoBets.length === 2) {
+      return { 
+        success: true, 
+        message: `${player.name} a parié ! Le duel commence !`,
+        cardPlayed: true,
+        shouldResolve: true // Signal pour résoudre automatiquement
+      };
+    }
+    
+    return { 
+      success: true, 
+      message: `${player.name} a parié au casino ! En attente d'un adversaire...`,
+      cardPlayed: true
+    };
   }
 
   resolveCasinoBets() {
-    if (this.casinoBets.length === 0) {
-      return { success: false, message: "Aucun pari au casino" };
+    if (this.casinoBets.length !== 2) {
+      return { success: false, message: "Le duel nécessite exactement 2 joueurs" };
     }
     
-    // Tirer au sort un gagnant
-    const winnerBet = this.casinoBets[Math.floor(Math.random() * this.casinoBets.length)];
-    const winner = this.players.find(p => p.id === winnerBet.playerId);
+    const bet1 = this.casinoBets[0];
+    const bet2 = this.casinoBets[1];
     
-    if (!winner) {
-      return { success: false, message: "Erreur: gagnant introuvable" };
+    let winner, loser, winnerBet, loserBet;
+    
+    // Règle: Si même niveau, le 2ème joueur gagne. Sinon le 1er gagne.
+    if (bet1.betAmount === bet2.betAmount) {
+      // Même niveau → 2ème joueur gagne
+      winner = this.players.find(p => p.id === bet2.playerId);
+      loser = this.players.find(p => p.id === bet1.playerId);
+      winnerBet = bet2;
+      loserBet = bet1;
+    } else {
+      // Niveaux différents → 1er joueur gagne
+      winner = this.players.find(p => p.id === bet1.playerId);
+      loser = this.players.find(p => p.id === bet2.playerId);
+      winnerBet = bet1;
+      loserBet = bet2;
     }
     
-    // Le gagnant récupère tous les salaires pariés
-    let totalWinnings = 0;
-    this.casinoBets.forEach(bet => {
-      winner.salary.push(bet.salaryCard);
-      winner.smiles += bet.salaryCard.smiles || 0;
-      totalWinnings += bet.betAmount;
-    });
+    if (!winner || !loser) {
+      return { success: false, message: "Erreur: joueurs introuvables" };
+    }
     
-    const losers = this.casinoBets
-      .filter(bet => bet.playerId !== winner.id)
-      .map(bet => bet.playerName);
+    // Le gagnant récupère les 2 salaires
+    winner.salary.push(winnerBet.salaryCard);
+    winner.salary.push(loserBet.salaryCard);
+    winner.smiles += (winnerBet.salaryCard.smiles || 0) + (loserBet.salaryCard.smiles || 0);
     
-    // Vider les paris
+    const totalWinnings = winnerBet.betAmount + loserBet.betAmount;
+    
+    // Fermer le casino
+    this.casinoActive = false;
     this.casinoBets = [];
+    this.casinoOpenedBy = null;
     
     return { 
       success: true, 
       winner: winner.name,
       winnerId: winner.id,
+      loser: loser.name,
+      loserId: loser.id,
+      winnerLevel: winnerBet.betAmount,
+      loserLevel: loserBet.betAmount,
       totalWinnings: totalWinnings,
-      losers: losers,
-      message: `🎰 ${winner.name} remporte ${totalWinnings} salaire(s) au casino ! 🎰`
+      sameLevel: winnerBet.betAmount === loserBet.betAmount,
+      message: winnerBet.betAmount === loserBet.betAmount 
+        ? `🎰 Même niveau (${winnerBet.betAmount}) ! ${winner.name} (2ème joueur) remporte le duel ! 🎰`
+        : `🎰 Niveaux différents (${bet1.betAmount} vs ${bet2.betAmount}) ! ${winner.name} (1er joueur) remporte le duel ! 🎰`
     };
   }
 
@@ -1005,8 +1061,17 @@ io.on('connection', (socket) => {
       // Si c'est un Casino qui est ouvert, notifier tous les joueurs
       if (result.casinoOpened) {
         io.to(playerInfo.roomId).emit('casino-opened', {
-          message: result.message
+          message: result.message,
+          playerId: socket.id,
+          playerName: playerInfo.playerName
         });
+        
+        // Proposer au joueur qui a ouvert le casino de parier directement
+        if (result.shouldPromptBet) {
+          socket.emit('casino-prompt-bet', {
+            message: "Veux-tu parier un salaire immédiatement ?"
+          });
+        }
       }
       
       // Si c'est un Tsunami, envoyer les nouvelles mains à tous les joueurs
@@ -1178,13 +1243,45 @@ io.on('connection', (socket) => {
       io.to(playerInfo.roomId).emit('casino-bet-placed', {
         playerName: playerInfo.playerName,
         message: result.message,
-        gameState: game.getPublicGameState()
+        gameState: game.getPublicGameState(),
+        betCount: game.casinoBets.length
       });
       
       socket.emit('hand-update', {
         hand: game.getPlayerData(socket.id).hand,
         playerState: game.getPlayerData(socket.id)
       });
+      
+      // Si c'est le 2ème pari, résoudre automatiquement le duel
+      if (result.shouldResolve) {
+        setTimeout(() => {
+          const duelResult = game.resolveCasinoBets();
+          
+          if (duelResult.success) {
+            io.to(playerInfo.roomId).emit('casino-resolved', {
+              winner: duelResult.winner,
+              winnerId: duelResult.winnerId,
+              loser: duelResult.loser,
+              loserId: duelResult.loserId,
+              winnerLevel: duelResult.winnerLevel,
+              loserLevel: duelResult.loserLevel,
+              sameLevel: duelResult.sameLevel,
+              totalWinnings: duelResult.totalWinnings,
+              message: duelResult.message,
+              gameState: game.getPublicGameState()
+            });
+            
+            // Mettre à jour la main du gagnant
+            const winner = game.players.find(p => p.id === duelResult.winnerId);
+            if (winner) {
+              io.to(duelResult.winnerId).emit('hand-update', {
+                hand: game.getPlayerData(duelResult.winnerId).hand,
+                playerState: game.getPlayerData(duelResult.winnerId)
+              });
+            }
+          }
+        }, 1000); // 1 seconde de délai pour le suspense
+      }
     } else {
       socket.emit('error', { message: result.message });
     }
