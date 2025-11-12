@@ -472,7 +472,7 @@
       "smiles": 0,
       "description": "Coup de chance ! Choisis une carte dans la défausse",
       "image": "🍀",
-      "quantity": 10
+      "quantity": 1
     },
     {
       "id": "special-3",
@@ -499,7 +499,7 @@
       "smiles": 0,
       "description": "Mélange toutes les cartes de tous les joueurs et les redistribue !",
       "image": "🌊",
-      "quantity": 10
+      "quantity": 1
     }
   ]
 }

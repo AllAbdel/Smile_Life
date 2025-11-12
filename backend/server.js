@@ -487,7 +487,13 @@ class Game {
         return { success: true, message: `${player.name} a acheté ${card.name} !` };
       
       case 'tsunami':
-        // Mélanger et redistribuer toutes les cartes de tous les joueurs
+        // D'abord, faire piocher le joueur qui a joué le Tsunami pour compenser la carte jouée
+        if (this.deck.length > 0) {
+          const drawnCard = this.deck.pop();
+          player.hand.push(drawnCard);
+        }
+        
+        // Ensuite, mélanger et redistribuer toutes les cartes de tous les joueurs
         const allCards = [];
         
         // Récupérer toutes les cartes en main de tous les joueurs
