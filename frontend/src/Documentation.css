@@ -79,6 +79,12 @@
 
 .card-type.danger {
   border-left-color: #ff5252;
+  background: #fff5f5;
+}
+
+.card-type.special {
+  border-left-color: #ffd700;
+  background: #fffef0;
 }
 
 .card-type h4 {
@@ -98,6 +104,80 @@
 
 .card-type li {
   margin: 5px 0;
+}
+
+/* Casino rules styling */
+.casino-rules {
+  background: #f0f8ff;
+  padding: 15px;
+  border-radius: 10px;
+  border: 2px solid #4169e1;
+}
+
+.casino-rules h4 {
+  color: #4169e1;
+  margin-top: 15px;
+  margin-bottom: 10px;
+}
+
+.casino-rules h4:first-child {
+  margin-top: 0;
+}
+
+.casino-rules ol {
+  padding-left: 25px;
+  margin: 10px 0;
+}
+
+.casino-rules ol li {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.casino-rules ul {
+  list-style: none;
+  padding-left: 10px;
+  margin: 10px 0;
+}
+
+.casino-rules ul li {
+  margin: 8px 0;
+  padding-left: 20px;
+  position: relative;
+}
+
+.casino-rules ul li:before {
+  content: "▸";
+  position: absolute;
+  left: 0;
+  color: #4169e1;
+  font-weight: bold;
+}
+
+.rule-box {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 10px 0;
+  border: 2px dashed #4169e1;
+}
+
+.rule-box p {
+  margin: 8px 0;
+  font-weight: 500;
+}
+
+/* Tips section */
+.docs-section.tips {
+  background: #fff9e6;
+  padding: 20px;
+  border-radius: 10px;
+  border: 2px solid #ffa500;
+}
+
+.docs-section.tips h3 {
+  color: #ff8c00;
+  border-bottom-color: #ffa500;
 }
 
 .docs-section ol {
