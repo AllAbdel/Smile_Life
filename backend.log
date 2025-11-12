@@ -1,12 +1,11 @@
-🎮 Serveur Smile Life lancé sur le port 3001
-Nouveau joueur connecté: 5XFBL51qbhwiHUSmAAAC
-Nouveau joueur connecté: BESkCYsN8ga2TQLgAAAF
-Partie créée: 1JV7P3 par Abdel
-azzeaz a rejoint la partie 1JV7P3
-Joueur déconnecté: 5XFBL51qbhwiHUSmAAAC
-Partie 1JV7P3 supprimée
-Joueur déconnecté: BESkCYsN8ga2TQLgAAAF
-Nouveau joueur connecté: svKX7bfoyYXzNk3lAAAI
-Partie créée: IMU262 par Abdel
-Partie IMU262 supprimée
-Joueur déconnecté: svKX7bfoyYXzNk3lAAAI
+🎮 Serveur Smile Life lancé sur 0.0.0.0:3001
+📡 Réseau local activé !
+
+🌐 Adresses IP disponibles :
+   - Localhost: http://localhost:3001
+   - Tailscale: http://100.80.248.107:3001
+   - vEthernet (Default Switch): http://172.26.48.1:3001
+   - Ethernet 3: http://192.168.56.1:3001
+   - Wi-Fi: http://192.168.1.177:3001
+
+💡 Partage cette IP avec tes amis pour jouer en réseau local !
