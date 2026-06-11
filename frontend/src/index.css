@@ -1,13 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+:root {
+  /* Palette */
+  --bg-0: #0b1020;
+  --bg-1: #121a33;
+  --bg-2: #1a2444;
+  --panel: rgba(255, 255, 255, 0.06);
+  --panel-strong: rgba(255, 255, 255, 0.1);
+  --line: rgba(255, 255, 255, 0.12);
+  --text: #eef2ff;
+  --text-dim: #9aa5c4;
+
+  /* Accents */
+  --sun: #ffd166;
+  --sun-deep: #ff9f43;
+  --violet: #8b5cf6;
+  --rose: #ec4899;
+  --green: #34d399;
+  --red: #f87171;
+
+  /* Couleurs par type de carte */
+  --t-study: #60a5fa;
+  --t-job: #a78bfa;
+  --t-salary: #fbbf24;
+  --t-flirt: #f472b6;
+  --t-marriage: #fb7185;
+  --t-adultery: #c084fc;
+  --t-child: #2dd4bf;
+  --t-pet: #4ade80;
+  --t-travel: #22d3ee;
+  --t-housing: #fb923c;
+  --t-malus: #f87171;
+  --t-chance: #a3e635;
+  --t-casino: #facc15;
+  --t-tsunami: #38bdf8;
+  --t-special: #c4b5fd;
+  --t-other: #94a3b8;
+
+  /* Géométrie */
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  padding: 0;
+}
+
+body {
+  font-family: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg-0);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: 'Cascadia Code', Consolas, monospace;
+}
+
+/* Scrollbars discrètes */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }

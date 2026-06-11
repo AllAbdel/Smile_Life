@@ -1,16 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 import Documentation from './Documentation';
 import MediaPanel from './MediaPanel';
 import Confetti from './Confetti';
 import SoundManager from './SoundManager';
+import GameCard from './components/GameCard';
+import CategoryPiles from './components/CategoryPiles';
 
 // Détection automatique de l'adresse du serveur
-// Si tu veux forcer une IP spécifique, remplace par: 'http://TON_IP:3001'
-const DEFAULT_SOCKET_URL = window.location.hostname === 'localhost' 
+const DEFAULT_SOCKET_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:3001'
   : `http://${window.location.hostname}:3001`;
+
+// Avatar emoji stable dérivé du nom du joueur
+const AVATARS = ['😎', '🤠', '🥳', '🤓', '😺', '🦊', '🐼', '🐸', '🦄', '🐯', '🤖', '👽', '🐙', '🦁', '🐰', '🐨'];
+const avatarFor = (name = '') => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATARS[hash % AVATARS.length];
+};
 
 function App() {
   const [socket, setSocket] = useState(null);
@@ -26,35 +35,41 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [chatMessage, setChatMessage] = useState('');
   const [selectedCardIndex, setSelectedCardIndex] = useState(null);
-  const [selectedAction, setSelectedAction] = useState('play-self');
-  const [selectedTarget, setSelectedTarget] = useState(null);
+  const [targetMode, setTargetMode] = useState(false); // Choix d'un adversaire pour un malus
   const [error, setError] = useState('');
   const [customCards, setCustomCards] = useState(null);
   const [showDocs, setShowDocs] = useState(false);
   const [showMedia, setShowMedia] = useState(false);
-  const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [currentMusic, setCurrentMusic] = useState(null);
-  const [expandedPlayers, setExpandedPlayers] = useState({}); // Pour les cartes déroulantes
-  const [showCasinoBet, setShowCasinoBet] = useState(false); // Pour parier au casino
-  const [casinoAnimation, setCasinoAnimation] = useState(false); // Animation du casino
-  const [showConfetti, setShowConfetti] = useState(false); // Confettis pour célébrations
-  
-  // États pour le drag & drop
+  const [showChat, setShowChat] = useState(false); // Chat en overlay sur mobile
+  const [unreadChat, setUnreadChat] = useState(0);
+  const [expandedPlayers, setExpandedPlayers] = useState({});
+  const [showMyCards, setShowMyCards] = useState(false);
+  const [showCasinoBet, setShowCasinoBet] = useState(false);
+  const [casinoAnimation, setCasinoAnimation] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  // Drag & drop (desktop)
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
-  const [dropZoneActive, setDropZoneActive] = useState(null); // Zone de drop survolée
-  const [dragGhostPos, setDragGhostPos] = useState({ x: 0, y: 0 }); // Position du fantôme
-  const [showDragGhost, setShowDragGhost] = useState(false); // Afficher le fantôme
-  const [shakeZone, setShakeZone] = useState(null); // Zone qui shake en cas d'erreur
-  
-  // État pour le pari automatique au casino
+  const [dropZoneActive, setDropZoneActive] = useState(null);
+  const [dragGhostPos, setDragGhostPos] = useState({ x: 0, y: 0 });
+  const [showDragGhost, setShowDragGhost] = useState(false);
+  const [shakeZone, setShakeZone] = useState(null);
+
+  // Casino
   const [showCasinoBetPrompt, setShowCasinoBetPrompt] = useState(false);
-  const [casinoJustPlayed, setCasinoJustPlayed] = useState(false);
-  
-  // État pour la carte Chance
+
+  // Carte Chance
   const [showChanceModal, setShowChanceModal] = useState(false);
   const [chanceDiscardPile, setChanceDiscardPile] = useState([]);
-  
+
   const chatEndRef = useRef(null);
+  const showChatRef = useRef(showChat);
+  showChatRef.current = showChat;
+
+  const addSystemMessage = useCallback((message) => {
+    setMessages(prev => [...prev, { type: 'system', message, timestamp: Date.now() }]);
+  }, []);
 
   useEffect(() => {
     const newSocket = io(serverUrl);
@@ -78,146 +93,120 @@ function App() {
 
     newSocket.on('player-joined', ({ playerName, gameState }) => {
       setGameData(gameState);
-      addSystemMessage(`${playerName} a rejoint la partie`);
+      addSystemMessage(`👋 ${playerName} a rejoint la partie`);
     });
 
-    newSocket.on('player-left', ({ playerName, gameState, newHostId }) => {
+    newSocket.on('player-left', ({ playerName, gameState }) => {
       setGameData(gameState);
-      addSystemMessage(`${playerName} a quitté la partie`);
+      addSystemMessage(`🚪 ${playerName} a quitté la partie`);
     });
 
     newSocket.on('game-started', ({ gameState }) => {
       setGameData(gameState);
       setGameState('playing');
-      addSystemMessage('La partie commence !');
+      addSystemMessage('🎬 La partie commence !');
     });
 
-    newSocket.on('hand-update', ({ hand, playerState }) => {
+    newSocket.on('hand-update', ({ hand, playerState, tsunami }) => {
       setPlayerData(prev => {
-        if (playerState) {
-          return { ...playerState, hand };
-        }
+        if (playerState) return { ...playerState, hand };
         return { ...prev, hand };
       });
+      if (tsunami) addSystemMessage('🌊 Ta main a été emportée par le tsunami !');
     });
 
-    newSocket.on('card-drawn', ({ card, hand }) => {
+    newSocket.on('card-drawn', ({ hand }) => {
       setPlayerData(prev => ({ ...prev, hand }));
-      addSystemMessage('Vous avez pioché une carte');
     });
 
-    newSocket.on('card-played', ({ playerId, playerName, message, gameState }) => {
+    newSocket.on('card-taken-from-discard', ({ card, hand }) => {
+      setPlayerData(prev => ({ ...prev, hand }));
+      addSystemMessage(`🃏 Tu récupères « ${card.name} »`);
+    });
+
+    newSocket.on('card-played', ({ playerId, message, gameState }) => {
       setGameData(gameState);
-      
-      // Mettre à jour les données du joueur local si c'est lui qui a joué
       if (playerId === newSocket.id) {
         const updatedPlayer = gameState.players.find(p => p.id === playerId);
         if (updatedPlayer) {
-          setPlayerData(prev => ({
-            ...prev,
-            studies: updatedPlayer.studies,
-            job: updatedPlayer.job,
-            married: updatedPlayer.married,
-            smiles: updatedPlayer.smiles,
-            playedCards: updatedPlayer.playedCards
-          }));
+          setPlayerData(prev => ({ ...prev, ...updatedPlayer, hand: prev.hand }));
         }
+        // Ne réinitialiser la sélection que si C'EST NOUS qui avons joué
+        setSelectedCardIndex(null);
+        setTargetMode(false);
       }
-      
-      addSystemMessage(`${playerName}: ${message}`);
-      setSelectedCardIndex(null);
-      setSelectedTarget(null);
-      setSelectedAction('play-self'); // Réinitialiser l'action à "jouer sur moi"
+      addSystemMessage(message);
     });
 
     newSocket.on('turn-changed', ({ currentPlayerId, currentPlayerName, gameState }) => {
-      setGameData(gameState); // IMPORTANT : Mettre à jour l'état complet du jeu
-      addSystemMessage(`C'est au tour de ${currentPlayerName}`);
+      setGameData(gameState);
+      if (currentPlayerId === newSocket.id) {
+        addSystemMessage(`🟢 C'est ton tour !`);
+        SoundManager.play('ding');
+      } else {
+        addSystemMessage(`⏳ Tour de ${currentPlayerName}`);
+      }
     });
 
-    newSocket.on('player-skipped-turn', ({ playerName, reason }) => {
-      addSystemMessage(reason || `⏭️ ${playerName} saute son tour !`);
+    newSocket.on('player-skipped-turn', ({ reason }) => {
+      addSystemMessage(reason);
     });
 
     newSocket.on('sound-played', ({ soundFile, soundName, playerName, isLocal, procedural }) => {
-      // Si c'est un son procédural (comme Bravo)
       if (procedural || soundName === 'Bravo !') {
         SoundManager.play('bravo');
-      }
-      // Si c'est un fichier local
-      else if (isLocal) {
+      } else if (isLocal) {
         const audioMp3 = new Audio(soundFile);
         audioMp3.volume = 0.5;
-        audioMp3.play().catch(err => {
-          console.log('Erreur MP3, essai WAV:', err);
+        audioMp3.play().catch(() => {
           const audioWav = new Audio(soundFile.replace('.mp3', '.wav'));
           audioWav.volume = 0.5;
-          audioWav.play().catch(err2 => console.log('Erreur lecture son local:', err2));
+          audioWav.play().catch(() => {});
         });
-      }
-      // Sinon, fichier externe
-      else {
+      } else {
         const audio = new Audio(soundFile);
         audio.volume = 0.5;
-        audio.play().catch(err => console.log('Erreur lecture son:', err));
+        audio.play().catch(() => {});
       }
-      addSystemMessage(`🔊 ${playerName} a joué: ${soundName}`);
+      addSystemMessage(`🔊 ${playerName} joue : ${soundName}`);
     });
 
     newSocket.on('game-update', ({ gameState }) => {
       setGameData(gameState);
-      
-      // Mettre à jour aussi les données du joueur local
       const localPlayer = gameState.players.find(p => p.id === newSocket.id);
       if (localPlayer) {
-        setPlayerData(prev => ({
-          ...prev,
-          ...localPlayer,
-          hand: prev.hand // Garder la main actuelle
-        }));
+        setPlayerData(prev => ({ ...prev, ...localPlayer, hand: prev?.hand || [] }));
       }
     });
 
-    newSocket.on('casino-opened', ({ message, playerId, playerName }) => {
+    newSocket.on('casino-opened', ({ message }) => {
       addSystemMessage(message);
       setCasinoAnimation(true);
       setTimeout(() => setCasinoAnimation(false), 3000);
     });
-    
-    newSocket.on('casino-prompt-bet', ({ message }) => {
-      // Proposer au joueur de parier
+
+    newSocket.on('casino-prompt-bet', () => {
       setShowCasinoBetPrompt(true);
     });
 
     newSocket.on('chance-activated', ({ message, discardPile }) => {
-      // Afficher le modal pour choisir une carte de la défausse
       addSystemMessage(message);
       setChanceDiscardPile(discardPile);
       setShowChanceModal(true);
     });
 
-    newSocket.on('casino-bet-placed', ({ playerName, message, gameState, betCount }) => {
+    newSocket.on('casino-bet-placed', ({ message, gameState, betCount }) => {
       setGameData(gameState);
       addSystemMessage(message);
-      
-      // Afficher le nombre de paris
       if (betCount === 1) {
         addSystemMessage("🎰 En attente d'un adversaire pour le duel...");
       }
     });
 
-    newSocket.on('casino-resolved', ({ winner, winnerId, loser, loserId, winnerLevel, loserLevel, sameLevel, totalWinnings, message, gameState }) => {
+    newSocket.on('casino-resolved', ({ winner, loser, winnerLevel, loserLevel, sameLevel, message, gameState }) => {
       setGameData(gameState);
-      
-      // Message détaillé du résultat
-      const resultMessage = sameLevel
-        ? `🎰 DUEL CASINO 🎰\n${winner} (Niv.${winnerLevel}) VS ${loser} (Niv.${loserLevel})\nMême niveau ! Le 2ème joueur (${winner}) gagne !`
-        : `🎰 DUEL CASINO 🎰\n${winner} (Niv.${winnerLevel}) VS ${loser} (Niv.${loserLevel})\nNiveaux différents ! Le 1er joueur (${winner}) gagne !`;
-      
-      addSystemMessage(resultMessage);
+      addSystemMessage(`🎰 DUEL : ${winner} (niv.${winnerLevel}) vs ${loser} (niv.${loserLevel}) — ${sameLevel ? 'égalité, le 2e parieur gagne !' : 'mises différentes, le 1er parieur gagne !'}`);
       addSystemMessage(message);
-      
-      // Animation de victoire avec confettis
       setCasinoAnimation(true);
       setShowConfetti(true);
       setTimeout(() => {
@@ -230,35 +219,39 @@ function App() {
       setGameState('gameover');
       addSystemMessage(`🏆 ${winner} a gagné !`);
       setGameData(prev => ({ ...prev, finalScores, stats }));
-      
-      // Confettis pour la fin de partie
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 10000);
     });
 
     newSocket.on('chat-message', ({ playerName, message, timestamp }) => {
       setMessages(prev => [...prev, { type: 'chat', playerName, message, timestamp }]);
+      if (!showChatRef.current) {
+        setUnreadChat(prev => prev + 1);
+      }
     });
 
     newSocket.on('error', ({ message }) => {
       setError(message);
+      SoundManager.play('error');
       setTimeout(() => setError(''), 5000);
     });
 
     return () => newSocket.close();
-  }, [serverUrl]);
+  }, [serverUrl, addSystemMessage]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const addSystemMessage = (message) => {
-    setMessages(prev => [...prev, { type: 'system', message, timestamp: Date.now() }]);
-  };
+  useEffect(() => {
+    if (showChat) setUnreadChat(0);
+  }, [showChat, messages]);
+
+  // ---------- Actions ----------
 
   const createGame = () => {
     if (!playerName.trim()) {
-      setError('Entrez un nom de joueur');
+      setError('Entre un nom de joueur');
       return;
     }
     socket.emit('create-game', { playerName: playerName.trim(), customCards });
@@ -266,202 +259,35 @@ function App() {
 
   const joinGame = () => {
     if (!playerName.trim() || !joinRoomId.trim()) {
-      setError('Entrez un nom de joueur et un code de partie');
+      setError('Entre un nom de joueur et un code de partie');
       return;
     }
     socket.emit('join-game', { roomId: joinRoomId.trim().toUpperCase(), playerName: playerName.trim() });
   };
 
-  const startGame = () => {
-    socket.emit('start-game');
+  const startGame = () => socket.emit('start-game');
+
+  const emitPlayCard = (cardIndex, action, targetPlayerId = null) => {
+    socket.emit('play-card', { cardIndex, targetPlayerId, action });
   };
 
-  const drawCard = () => {
-    socket.emit('draw-card');
+  const playSelf = () => {
+    if (selectedCardIndex === null) return;
+    emitPlayCard(selectedCardIndex, 'play-self');
   };
 
-  const playCard = () => {
-    if (selectedCardIndex === null) {
-      setError('Sélectionnez une carte');
-      return;
-    }
-
-    if (selectedAction === 'play-opponent' && !selectedTarget) {
-      setError('Sélectionnez un adversaire');
-      return;
-    }
-
-    socket.emit('play-card', {
-      cardIndex: selectedCardIndex,
-      targetPlayerId: selectedTarget,
-      action: selectedAction
-    });
+  const discardSelected = () => {
+    if (selectedCardIndex === null) return;
+    emitPlayCard(selectedCardIndex, 'discard');
   };
 
-  const takeDiscard = () => {
-    socket.emit('take-discard');
+  const playOnTarget = (targetId) => {
+    if (selectedCardIndex === null) return;
+    emitPlayCard(selectedCardIndex, 'play-opponent', targetId);
+    setTargetMode(false);
   };
 
-  const togglePlayerExpanded = (playerId) => {
-    console.log('Toggle player expanded:', playerId, 'Current state:', expandedPlayers[playerId]);
-    setExpandedPlayers(prev => ({
-      ...prev,
-      [playerId]: !prev[playerId]
-    }));
-  };
-  
-  // ========== DRAG & DROP SYSTEM ==========
-  
-  // Commence le drag d'une carte
-  const handleDragStart = (e, cardIndex) => {
-    // Seulement si c'est notre tour
-    if (!isMyTurn()) {
-      e.preventDefault();
-      return;
-    }
-    
-    // 🎵 Son de "whoosh"
-    SoundManager.play('whoosh');
-    
-    setDraggedCardIndex(cardIndex);
-    setSelectedCardIndex(cardIndex);
-    setShowDragGhost(true);
-    
-    // Visuel de la carte en train d'être dragged
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('cardIndex', cardIndex);
-    
-    // Image fantôme transparente (on va utiliser notre propre ghost)
-    const img = new Image();
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    e.dataTransfer.setDragImage(img, 0, 0);
-    
-    // Ajouter une classe au body pour indiquer qu'on drag
-    document.body.classList.add('dragging-card');
-  };
-  
-  const handleDrag = (e) => {
-    if (e.clientX === 0 && e.clientY === 0) return; // Ignore les événements fantômes
-    setDragGhostPos({ x: e.clientX, y: e.clientY });
-  };
-  
-  const handleDragEnd = (e) => {
-    setDraggedCardIndex(null);
-    setDropZoneActive(null);
-    setShowDragGhost(false);
-    document.body.classList.remove('dragging-card');
-  };
-  
-  // Gestion des zones de drop
-  const handleDragOver = (e, zone) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDropZoneActive(zone);
-  };
-  
-  const handleDragLeave = (e) => {
-    // Vérifier qu'on quitte vraiment la zone (pas juste un enfant)
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      setDropZoneActive(null);
-    }
-  };
-  
-  // Drop sur une zone
-  const handleDrop = (e, dropData) => {
-    e.preventDefault();
-    
-    if (draggedCardIndex === null) return;
-    
-    const card = playerData?.hand[draggedCardIndex];
-    if (!card) return;
-    
-    let isValidDrop = true;
-    let errorMessage = '';
-    
-    // Validation et exécution selon la zone
-    switch (dropData.type) {
-      case 'self':
-        // Jouer sur soi
-        if (card.type === 'malus') {
-          isValidDrop = false;
-          errorMessage = '❌ Tu ne peux pas jouer un malus sur toi-même !';
-          setShakeZone('self');
-        } else {
-          // Le prompt de pari casino est envoyé par le serveur (casino-prompt-bet)
-          socket.emit('play-card', {
-            cardIndex: draggedCardIndex,
-            targetPlayerId: null,
-            action: 'play-self'
-          });
-        }
-        break;
-        
-      case 'opponent':
-        // Jouer sur un adversaire
-        if (card.type !== 'malus') {
-          isValidDrop = false;
-          errorMessage = '❌ Tu ne peux jouer que des malus sur les adversaires !';
-          setShakeZone(`opponent-${dropData.playerId}`);
-        } else {
-          socket.emit('play-card', {
-            cardIndex: draggedCardIndex,
-            targetPlayerId: dropData.playerId,
-            action: 'play-opponent'
-          });
-        }
-        break;
-        
-      case 'casino':
-        // Parier au casino - directement depuis la main
-        if (card.type !== 'salary') {
-          isValidDrop = false;
-          errorMessage = '❌ Tu ne peux parier que des cartes Salaire au casino !';
-          setShakeZone('casino');
-        } else {
-          // Trouver l'index du salaire dans la main
-          const salaryCardsInHand = playerData?.hand.filter(c => c.type === 'salary');
-          const salaryIndex = salaryCardsInHand.findIndex(c => c === card);
-          
-          socket.emit('casino-bet', { salaryCardIndex: salaryIndex });
-        }
-        break;
-        
-      case 'discard':
-        // Défausser
-        socket.emit('play-card', {
-          cardIndex: draggedCardIndex,
-          targetPlayerId: null,
-          action: 'discard'
-        });
-        break;
-        
-      default:
-        isValidDrop = false;
-        break;
-    }
-    
-    // Sons et animations
-    if (isValidDrop) {
-      // 🎵 Son de succès
-      SoundManager.play('ding');
-    } else {
-      // 🎵 Son d'erreur
-      SoundManager.play('error');
-      if (errorMessage) {
-        setError(errorMessage);
-      }
-      // Animation shake pendant 500ms
-      setTimeout(() => setShakeZone(null), 500);
-    }
-    
-    // Reset
-    setDraggedCardIndex(null);
-    setDropZoneActive(null);
-    setShowDragGhost(false);
-    document.body.classList.remove('dragging-card');
-  };
-  
-  // ========== FIN DRAG & DROP SYSTEM ==========
+  const takeDiscard = () => socket.emit('take-discard');
 
   const placeCasinoBet = (salaryIndex) => {
     socket.emit('casino-bet', { salaryCardIndex: salaryIndex });
@@ -484,19 +310,18 @@ function App() {
 
   const loadCustomCards = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const cards = JSON.parse(event.target.result);
-          setCustomCards(cards);
-          addSystemMessage('Cartes personnalisées chargées !');
-        } catch (err) {
-          setError('Fichier JSON invalide');
-        }
-      };
-      reader.readAsText(file);
-    }
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const cards = JSON.parse(event.target.result);
+        setCustomCards(cards);
+        addSystemMessage('Cartes personnalisées chargées !');
+      } catch {
+        setError('Fichier JSON invalide');
+      }
+    };
+    reader.readAsText(file);
   };
 
   const changeServerUrl = () => {
@@ -511,6 +336,25 @@ function App() {
     }
   };
 
+  const copyRoomCode = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(roomId).then(() => {
+        setCopiedCode(true);
+        setTimeout(() => setCopiedCode(false), 2000);
+      }).catch(() => {});
+    }
+  };
+
+  const resignJob = () => {
+    if (!playerData?.job) return;
+    const warn = playerData.job.canQuitInstantly ? '' : '\n⚠️ Tu sauteras ton prochain tour !';
+    if (window.confirm(`Démissionner de ${playerData.job.name} ?${warn}`)) {
+      socket.emit('resign-job');
+    }
+  };
+
+  // ---------- Helpers ----------
+
   const isMyTurn = () => {
     if (!gameData || !playerData) return false;
     const currentPlayer = gameData.players[gameData.currentPlayerIndex];
@@ -523,525 +367,460 @@ function App() {
     return currentPlayer ? currentPlayer.name : '';
   };
 
-  const getCardEmoji = (card) => {
-    return card.image || '🎴';
-  };
-  
-  // Organiser les cartes par catégorie
-  const organizeCardsByCategory = (cards) => {
-    const categories = {
-      malus: { name: 'Malus', icon: '💔', cards: [] },
-      flirt: { name: 'Flirts/Mariage', icon: '❤️', cards: [] },
-      job: { name: 'Métier', icon: '💼', cards: [] },
-      salary: { name: 'Salaires', icon: '💰', cards: [] },
-      child: { name: 'Enfants', icon: '👶', cards: [] },
-      pet: { name: 'Animaux', icon: '🐾', cards: [] },
-      housing: { name: 'Logement', icon: '🏠', cards: [] },
-      study: { name: 'Études', icon: '📚', cards: [] },
-      travel: { name: 'Voyages', icon: '✈️', cards: [] },
-      other: { name: 'Autre', icon: '🎴', cards: [] }
-    };
-    
-    cards.forEach(card => {
-      if (card.isMalus) {
-        categories.malus.cards.push(card);
-      } else if (card.type === 'flirt' || card.type === 'marriage' || card.type === 'adultery') {
-        categories.flirt.cards.push(card);
-      } else if (card.type === 'job') {
-        categories.job.cards.push(card);
-      } else if (card.type === 'salary') {
-        categories.salary.cards.push(card);
-      } else if (card.type === 'child') {
-        categories.child.cards.push(card);
-      } else if (card.type === 'pet') {
-        categories.pet.cards.push(card);
-      } else if (card.type === 'housing') {
-        categories.housing.cards.push(card);
-      } else if (card.type === 'study') {
-        categories.study.cards.push(card);
-      } else if (card.type === 'travel') {
-        categories.travel.cards.push(card);
-      } else {
-        categories.other.cards.push(card);
-      }
-    });
-    
-    // Retourner seulement les catégories qui ont des cartes
-    return Object.values(categories).filter(cat => cat.cards.length > 0);
+  const selectedCard = selectedCardIndex !== null ? playerData?.hand?.[selectedCardIndex] : null;
+
+  const toggleCardSelection = (index) => {
+    if (selectedCardIndex === index) {
+      setSelectedCardIndex(null);
+      setTargetMode(false);
+    } else {
+      setSelectedCardIndex(index);
+      setTargetMode(false);
+    }
   };
 
-  // Rendu du menu principal
+  const togglePlayerExpanded = (playerId) => {
+    setExpandedPlayers(prev => ({ ...prev, [playerId]: !prev[playerId] }));
+  };
+
+  // ---------- Drag & drop (desktop) ----------
+
+  const handleDragStart = (e, cardIndex) => {
+    if (!isMyTurn()) {
+      e.preventDefault();
+      return;
+    }
+    SoundManager.play('whoosh');
+    setDraggedCardIndex(cardIndex);
+    setSelectedCardIndex(cardIndex);
+    setShowDragGhost(true);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('cardIndex', String(cardIndex));
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(img, 0, 0);
+    document.body.classList.add('dragging-card');
+  };
+
+  const handleDrag = (e) => {
+    if (e.clientX === 0 && e.clientY === 0) return;
+    setDragGhostPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedCardIndex(null);
+    setDropZoneActive(null);
+    setShowDragGhost(false);
+    document.body.classList.remove('dragging-card');
+  };
+
+  const handleDragOver = (e, zone) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropZoneActive(zone);
+  };
+
+  const handleDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDropZoneActive(null);
+    }
+  };
+
+  const handleDrop = (e, dropData) => {
+    e.preventDefault();
+    if (draggedCardIndex === null) return;
+    const card = playerData?.hand[draggedCardIndex];
+    if (!card) return;
+
+    let isValidDrop = true;
+    let errorMessage = '';
+
+    switch (dropData.type) {
+      case 'self':
+        if (card.type === 'malus') {
+          isValidDrop = false;
+          errorMessage = '❌ Tu ne peux pas jouer un malus sur toi-même !';
+          setShakeZone('self');
+        } else {
+          emitPlayCard(draggedCardIndex, 'play-self');
+        }
+        break;
+
+      case 'opponent':
+        if (card.type !== 'malus') {
+          isValidDrop = false;
+          errorMessage = '❌ Seuls les malus se jouent sur un adversaire !';
+          setShakeZone(`opponent-${dropData.playerId}`);
+        } else {
+          emitPlayCard(draggedCardIndex, 'play-opponent', dropData.playerId);
+        }
+        break;
+
+      case 'casino':
+        if (card.type !== 'salary') {
+          isValidDrop = false;
+          errorMessage = '❌ Seules les cartes Salaire se parient au casino !';
+          setShakeZone('casino');
+        } else {
+          const salaryCardsInHand = playerData?.hand.filter(c => c.type === 'salary');
+          const salaryIndex = salaryCardsInHand.indexOf(card);
+          socket.emit('casino-bet', { salaryCardIndex: salaryIndex });
+        }
+        break;
+
+      case 'discard':
+        emitPlayCard(draggedCardIndex, 'discard');
+        break;
+
+      default:
+        isValidDrop = false;
+        break;
+    }
+
+    if (isValidDrop) {
+      SoundManager.play('ding');
+    } else {
+      SoundManager.play('error');
+      if (errorMessage) setError(errorMessage);
+      setTimeout(() => setShakeZone(null), 500);
+    }
+
+    handleDragEnd();
+  };
+
+  // ---------- Écrans ----------
+
   if (gameState === 'menu') {
     return (
-      <div className="App">
-        <div className="container">
-          <h1 className="title">😊 Smile Life 😊</h1>
-          <div className="menu-card">
-            <h2>Bienvenue !</h2>
-            
-            {/* Configuration serveur */}
-            <div className="server-config">
-              <button 
-                className="server-config-btn" 
-                onClick={() => setShowServerConfig(!showServerConfig)}
-              >
-                🌐 Serveur: {serverUrl.replace('http://', '')}
-              </button>
-              
-              {showServerConfig && (
-                <div className="server-config-panel">
-                  <p>Pour jouer en ligne ou via ngrok :</p>
-                  <input
-                    type="text"
-                    placeholder="Ex: abc123.ngrok.io:3001"
-                    value={customServerUrl}
-                    onChange={(e) => setCustomServerUrl(e.target.value)}
-                    className="input"
-                  />
-                  <button onClick={changeServerUrl} className="btn btn-success">
-                    Changer le serveur
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setServerUrl(DEFAULT_SOCKET_URL);
-                      setShowServerConfig(false);
-                    }} 
-                    className="btn btn-secondary"
-                  >
-                    Réinitialiser (local)
-                  </button>
-                </div>
-              )}
-            </div>
+      <div className="app screen-center">
+        <div className="menu-wrap">
+          <div className="logo-block">
+            <div className="logo-emoji">😊</div>
+            <h1 className="logo-title">Smile Life</h1>
+            <p className="logo-sub">Construis ta vie, vole des sourires.</p>
+          </div>
 
+          <div className="glass-card menu-card">
             <input
               type="text"
-              placeholder="Votre nom"
+              placeholder="Ton nom de joueur"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               className="input"
+              maxLength={16}
             />
-            
-            <div className="custom-cards-section">
-              <label htmlFor="custom-cards" className="file-label">
-                📂 Charger des cartes personnalisées (optionnel)
-              </label>
+
+            <button onClick={createGame} className="btn btn-primary btn-lg">
+              ✨ Créer une partie
+            </button>
+
+            <div className="divider"><span>ou</span></div>
+
+            <div className="join-row">
               <input
-                id="custom-cards"
-                type="file"
-                accept=".json"
-                onChange={loadCustomCards}
-                className="file-input"
+                type="text"
+                placeholder="CODE"
+                value={joinRoomId}
+                onChange={(e) => setJoinRoomId(e.target.value.toUpperCase())}
+                className="input input-code"
+                maxLength={6}
               />
-              {customCards && <p className="success-text">✅ Cartes personnalisées chargées</p>}
+              <button onClick={joinGame} className="btn btn-secondary">
+                Rejoindre
+              </button>
             </div>
 
-            <button onClick={createGame} className="btn btn-primary">
-              Créer une partie
-            </button>
-            
-            <div className="divider">OU</div>
-            
-            <input
-              type="text"
-              placeholder="Code de la partie"
-              value={joinRoomId}
-              onChange={(e) => setJoinRoomId(e.target.value.toUpperCase())}
-              className="input"
-            />
-            <button onClick={joinGame} className="btn btn-secondary">
-              Rejoindre une partie
-            </button>
-            
-            {error && <div className="error">{error}</div>}
+            <details className="menu-advanced">
+              <summary>⚙️ Options avancées</summary>
+              <div className="menu-advanced-content">
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setShowServerConfig(!showServerConfig)}
+                >
+                  🌐 Serveur : {serverUrl.replace('http://', '')}
+                </button>
+                {showServerConfig && (
+                  <div className="server-config-panel">
+                    <input
+                      type="text"
+                      placeholder="Ex : abc123.ngrok.io:3001"
+                      value={customServerUrl}
+                      onChange={(e) => setCustomServerUrl(e.target.value)}
+                      className="input"
+                    />
+                    <div className="row-gap">
+                      <button onClick={changeServerUrl} className="btn btn-secondary">Changer</button>
+                      <button
+                        onClick={() => { setServerUrl(DEFAULT_SOCKET_URL); setShowServerConfig(false); }}
+                        className="btn btn-ghost"
+                      >
+                        Réinitialiser
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <label htmlFor="custom-cards" className="btn btn-ghost file-label">
+                  📂 Cartes personnalisées (JSON)
+                </label>
+                <input id="custom-cards" type="file" accept=".json" onChange={loadCustomCards} className="file-input" />
+                {customCards && <p className="success-text">✅ Cartes personnalisées chargées</p>}
+              </div>
+            </details>
+
+            {error && <div className="error-box">{error}</div>}
           </div>
         </div>
       </div>
     );
   }
 
-  // Rendu du lobby
   if (gameState === 'lobby') {
     const isHost = gameData && socket && gameData.hostId === socket.id;
-    
+
     return (
-      <div className="App">
-        <div className="container">
-          <h1 className="title">😊 Smile Life 😊</h1>
-          <div className="lobby-card">
-            <h2>Salon d'attente</h2>
-            <div className="room-code">
-              <strong>Code de la partie:</strong> {roomId}
-            </div>
-            
+      <div className="app screen-center">
+        <div className="menu-wrap">
+          <div className="logo-block">
+            <div className="logo-emoji">😊</div>
+            <h1 className="logo-title">Smile Life</h1>
+          </div>
+
+          <div className="glass-card menu-card">
+            <h2 className="lobby-title">Salon d'attente</h2>
+
+            <button className="room-code" onClick={copyRoomCode} title="Copier le code">
+              <span className="room-code-value">{roomId}</span>
+              <span className="room-code-hint">{copiedCode ? '✅ Copié !' : '📋 Copier'}</span>
+            </button>
+
             <div className="players-list">
-              <h3>Joueurs ({gameData?.players.length}/6)</h3>
-              {gameData?.players.map((player, index) => (
+              <h3>Joueurs <span className="players-count">{gameData?.players.length}/6</span></h3>
+              {gameData?.players.map(player => (
                 <div key={player.id} className="player-item">
-                  {player.name} {player.id === gameData.hostId && '👑'}
+                  <span className="player-avatar">{avatarFor(player.name)}</span>
+                  <span className="player-item-name">{player.name}</span>
+                  {player.id === gameData.hostId && <span className="host-badge">👑 Hôte</span>}
                 </div>
               ))}
             </div>
 
-            {isHost && (
-              <button 
-                onClick={startGame} 
-                className="btn btn-primary"
+            {isHost ? (
+              <button
+                onClick={startGame}
+                className="btn btn-primary btn-lg"
                 disabled={gameData.players.length < 2}
               >
-                Démarrer la partie
+                {gameData.players.length < 2 ? 'En attente de joueurs...' : '🚀 Démarrer la partie'}
               </button>
+            ) : (
+              <p className="waiting-text">⏳ En attente de l'hôte...</p>
             )}
-            
-            {!isHost && (
-              <p className="waiting-text">En attente de l'hôte...</p>
-            )}
-            
-            {error && <div className="error">{error}</div>}
+
+            {error && <div className="error-box">{error}</div>}
           </div>
         </div>
       </div>
     );
   }
 
-  // Rendu de la partie en cours
   if (gameState === 'playing') {
+    const myTurn = isMyTurn();
+    const currentTurnPlayer = gameData?.players[gameData.currentPlayerIndex];
+
     return (
-      <div className="App game-view">
-        {/* Confettis */}
+      <div className="app game-view">
         <Confetti active={showConfetti} />
-        
-        {/* Fantôme de drag (trainée visuelle) */}
+
+        {/* Fantôme de drag */}
         {showDragGhost && draggedCardIndex !== null && playerData?.hand[draggedCardIndex] && (
-          <div 
-            className="drag-ghost"
-            style={{
-              left: dragGhostPos.x,
-              top: dragGhostPos.y
-            }}
-          >
+          <div className="drag-ghost" style={{ left: dragGhostPos.x, top: dragGhostPos.y }}>
             <div className="drag-ghost-card">
-              <div className="card-emoji-large">{getCardEmoji(playerData.hand[draggedCardIndex])}</div>
-              <div className="card-name">{playerData.hand[draggedCardIndex].name}</div>
+              <span>{playerData.hand[draggedCardIndex].image || '🎴'}</span>
+              <span className="drag-ghost-name">{playerData.hand[draggedCardIndex].name}</span>
             </div>
           </div>
         )}
-        
-        {/* Panneaux latéraux */}
+
         {showDocs && <Documentation onClose={() => setShowDocs(false)} />}
         {showMedia && <MediaPanel onClose={() => setShowMedia(false)} socket={socket} />}
-        
-        {/* Boutons flottants */}
-        <button className="float-btn float-btn-docs" onClick={() => setShowDocs(!showDocs)} title="Guide du jeu">
-          📖
-        </button>
-        <button className="float-btn float-btn-media" onClick={() => setShowMedia(!showMedia)} title="Musique & Sons">
-          🎬
-        </button>
-        
-        <div className="game-header">
-          <h1>😊 Smile Life - Partie {roomId}</h1>
-          <div className="turn-indicator">
-            {isMyTurn() ? (
-              <span className="your-turn">🟢 C'est votre tour !</span>
-            ) : (
-              <span>⏳ Tour de {getCurrentPlayerName()}</span>
-            )}
-          </div>
-        </div>
 
-        <div className="game-container">
-          {/* Zone de jeu principale */}
-          <div className="main-game-area">
-            {/* Autres joueurs */}
-            <div className="opponents-area">
+        {/* Barre du haut */}
+        <header className="topbar">
+          <div className="topbar-left">
+            <span className="topbar-logo">😊</span>
+            <span className="topbar-room">{roomId}</span>
+            <span className="topbar-deck">🎴 {gameData?.deckSize}</span>
+          </div>
+          <div className={`turn-pill ${myTurn ? 'is-mine' : ''}`}>
+            {myTurn ? '🟢 À toi de jouer !' : `⏳ ${getCurrentPlayerName()}`}
+          </div>
+          <div className="topbar-actions">
+            <button className="icon-btn" onClick={() => setShowDocs(!showDocs)} title="Guide du jeu">📖</button>
+            <button className="icon-btn" onClick={() => setShowMedia(!showMedia)} title="Musique & sons">🎵</button>
+            <button className="icon-btn chat-toggle" onClick={() => setShowChat(!showChat)} title="Chat">
+              💬
+              {unreadChat > 0 && <span className="chat-badge">{unreadChat}</span>}
+            </button>
+          </div>
+        </header>
+
+        <div className="game-layout">
+          <main className="game-main">
+            {/* Adversaires */}
+            <section className="opponents-row">
               {gameData?.players
                 .filter(p => p.id !== playerData?.id)
                 .map(player => {
-                  const isCurrentPlayer = gameData.players[gameData.currentPlayerIndex]?.id === player.id;
+                  const isCurrent = currentTurnPlayer?.id === player.id;
                   const isExpanded = expandedPlayers[player.id];
+                  const targetable = (targetMode || (draggedCardIndex !== null && playerData?.hand[draggedCardIndex]?.type === 'malus')) && myTurn;
                   return (
-                    <div 
-                      key={player.id} 
-                      className={`opponent-card ${selectedTarget === player.id ? 'selected' : ''} ${isCurrentPlayer ? 'current-turn' : ''} ${dropZoneActive === `opponent-${player.id}` ? 'drop-zone-active' : ''} ${isMyTurn() && draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === `opponent-${player.id}` ? 'shake' : ''}`}
-                      onClick={() => setSelectedTarget(player.id)}
+                    <div
+                      key={player.id}
+                      className={`opponent ${isCurrent ? 'is-current' : ''} ${targetable ? 'is-targetable' : ''} ${dropZoneActive === `opponent-${player.id}` ? 'drop-active' : ''} ${shakeZone === `opponent-${player.id}` ? 'shake' : ''}`}
+                      onClick={() => targetMode && playOnTarget(player.id)}
                       onDragOver={(e) => handleDragOver(e, `opponent-${player.id}`)}
                       onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, { type: 'opponent', playerId: player.id })}
                     >
-                      {dropZoneActive === `opponent-${player.id}` && (
-                        <div className="drop-hint-opponent">💢 Jouer un malus !</div>
-                      )}
-                      <div className="opponent-header">
-                        <strong>{player.name} {isCurrentPlayer && '🎯'}</strong>
-                        <span className="smiles">😊 {player.smiles}</span>
-                      </div>
-                      <div className="opponent-details">
-                        <div className="opponent-stat">🎴 Main: {player.handSize}</div>
-                        <div className="opponent-stat">📚 Études: {player.studies}</div>
-                        {player.job ? (
-                          <div className="opponent-stat opponent-job" title={player.job.description}>
-                            💼 {player.job.name} (Sal. max: Niv.{player.job.maxSalaryLevel || 1})
-                          </div>
-                        ) : (
-                          <div className="opponent-stat opponent-no-job">💼 Pas de métier</div>
-                        )}
-                        <div className="opponent-stat">💰 Salaires: {player.salaryCount}</div>
-                        <div className="opponent-stat">❤️ Flirts: {player.flirts.length}/5</div>
-                        {player.married && <div className="opponent-stat">💒 Marié(e)</div>}
-                        <div className="opponent-stat">👶 Enfants: {player.children.length}</div>
-                        <div className="opponent-stat">🐾 Animaux: {player.pets.length}</div>
-                      </div>
-                      
-                      {/* Cartes posées - déroulantes par catégorie */}
-                      <div className="opponent-played-cards">
-                        <div 
-                          className="opponent-cards-toggle"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            togglePlayerExpanded(player.id);
-                          }}
-                        >
-                          <span>📋 Cartes posées ({player.playedCards.length})</span>
-                          <span className="toggle-icon">{isExpanded ? '▼' : '▶'}</span>
+                      <div className="opponent-top">
+                        <span className="player-avatar">{avatarFor(player.name)}</span>
+                        <div className="opponent-id">
+                          <strong className="opponent-name">{player.name} {isCurrent && '🎯'}</strong>
+                          <span className="opponent-job-label">
+                            {player.prisonTurns > 0 ? `⛓️ Prison (${player.prisonTurns})` : (player.job ? `${player.job.image} ${player.job.name}` : '💤 Sans métier')}
+                          </span>
                         </div>
-                        {isExpanded && (
-                          <div className="opponent-cards-categories">
-                            {organizeCardsByCategory(player.playedCards).map((category, catIdx) => (
-                              <div key={catIdx} className="card-category-pile">
-                                <div className="pile-header">
-                                  <span className="pile-icon">{category.icon}</span>
-                                  <span className="pile-name">{category.name}</span>
-                                  <span className="pile-count">({category.cards.length})</span>
-                                </div>
-                                <div className="pile-cards">
-                                  {category.cards.map((card, cardIdx) => (
-                                    <div 
-                                      key={cardIdx}
-                                      className={`pile-card ${card.isMalus ? 'malus' : ''}`}
-                                      title={card.description}
-                                    >
-                                      <span className="pile-card-emoji">{getCardEmoji(card)}</span>
-                                      <span className="pile-card-name">{card.name}</span>
-                                      {card.smiles > 0 && <span className="pile-card-smiles">+{card.smiles}😊</span>}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <span className="smile-pill">😊 {player.smiles}</span>
                       </div>
+
+                      <div className="opponent-chips">
+                        <span className="chip" title="Cartes en main">🎴 {player.handSize}</span>
+                        <span className="chip" title="Études">📚 {player.studies}</span>
+                        <span className="chip" title="Salaires posés">💰 {player.salaryCount}</span>
+                        <span className="chip" title="Flirts">❤️ {player.flirts.length}</span>
+                        {player.married && <span className="chip" title="Marié(e)">💒</span>}
+                        {player.adultery && <span className="chip" title="Adultère">😈</span>}
+                        {player.children.length > 0 && <span className="chip" title="Enfants">👶 {player.children.length}</span>}
+                        {player.pets.length > 0 && <span className="chip" title="Animaux">🐾 {player.pets.length}</span>}
+                      </div>
+
+                      <button
+                        className="opponent-cards-toggle"
+                        onClick={(e) => { e.stopPropagation(); togglePlayerExpanded(player.id); }}
+                      >
+                        {isExpanded ? '▾' : '▸'} Cartes posées ({player.playedCards.length})
+                      </button>
+                      {isExpanded && <CategoryPiles cards={player.playedCards} />}
+
+                      {targetable && <div className="target-overlay">🎯 Cibler</div>}
                     </div>
                   );
                 })}
-            </div>
+            </section>
 
-            {/* Zone centrale */}
-            <div className="center-area">
-              <div className="deck-info">
-                <div className="deck">
-                  <div className="card-back">🎴</div>
-                  <div className="deck-count">{gameData?.deckSize} cartes</div>
-                </div>
-                
-                {/* Casino */}
-                {gameData?.casinoActive && (
-                  <div 
-                    className={`casino-zone ${casinoAnimation ? 'casino-active' : ''} ${dropZoneActive === 'casino' ? 'drop-zone-active' : ''} ${isMyTurn() && draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === 'casino' ? 'shake' : ''}`}
-                    onDragOver={(e) => handleDragOver(e, 'casino')}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, { type: 'casino' })}
-                  >
-                    <div className="casino-icon">🎰</div>
-                    <div className="casino-title">CASINO OUVERT</div>
-                    {dropZoneActive === 'casino' && (
-                      <div className="drop-hint">💰 Dépose ton salaire ici !</div>
-                    )}
-                    <div className="casino-bets-count">
-                      {gameData.casinoBets?.length || 0} pari(s)
-                    </div>
-                    {gameData.casinoBets && gameData.casinoBets.length > 0 && (
-                      <div className="casino-bets-list">
-                        {gameData.casinoBets.map((bet, idx) => (
-                          <div key={idx} className="casino-bet-item">
-                            {idx === 0 ? (
-                              // Premier pari caché
-                              `${bet.playerName}: ❓ (Face cachée)`
-                            ) : (
-                              // Deuxième pari visible
-                              `${bet.playerName}: Niv.${bet.betAmount} 💰`
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <button 
-                      className="btn-casino-bet"
-                      onClick={() => setShowCasinoBet(true)}
-                    >
-                      Parier
-                    </button>
-                  </div>
-                )}
-                
-                {/* Pile de défausse - toujours visible pour permettre le drag & drop */}
-                <div 
-                  className={`discard-pile ${dropZoneActive === 'discard' ? 'drop-zone-active' : ''} ${isMyTurn() && draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === 'discard' ? 'shake' : ''}`}
-                  onClick={gameData?.discardPile && gameData.discardPile.length > 0 ? takeDiscard : undefined}
-                  onDragOver={(e) => handleDragOver(e, 'discard')}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, { type: 'discard' })}
-                >
-                  {dropZoneActive === 'discard' && (
-                    <div className="drop-hint-discard">🗑️ Défausser ici</div>
-                  )}
-                  {gameData?.discardPile && gameData.discardPile.length > 0 ? (
-                    <>
-                      <div className="card">
-                        {getCardEmoji(gameData.discardPile[gameData.discardPile.length - 1])}
-                      </div>
-                      <div className="discard-name">{gameData.discardPile[gameData.discardPile.length - 1].name}</div>
-                      <button className="btn-small">Prendre</button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="card empty-discard">
-                        🗑️
-                      </div>
-                      <div className="discard-name">Défausse vide</div>
-                    </>
-                  )}
-                </div>
+            {/* Table centrale */}
+            <section className="table-row">
+              <div className="deck-pile" title="Pioche">
+                <div className="card-back">🎴</div>
+                <span className="pile-label">{gameData?.deckSize} cartes</span>
               </div>
 
-              {isMyTurn() && (
-                <div className="actions">
-                  <div className="turn-message">
-                    ✨ C'est votre tour ! Sélectionnez une carte et jouez-la.
+              <div
+                className={`discard-pile ${dropZoneActive === 'discard' ? 'drop-active' : ''} ${draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === 'discard' ? 'shake' : ''}`}
+                onDragOver={(e) => handleDragOver(e, 'discard')}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, { type: 'discard' })}
+              >
+                {gameData?.discardPile?.length > 0 ? (
+                  <>
+                    <GameCard card={gameData.discardPile[gameData.discardPile.length - 1]} variant="mini" />
+                    <button className="btn btn-ghost btn-sm" onClick={takeDiscard}>Prendre</button>
+                  </>
+                ) : (
+                  <>
+                    <div className="card-back empty">🗑️</div>
+                    <span className="pile-label">Défausse vide</span>
+                  </>
+                )}
+                {dropZoneActive === 'discard' && <div className="drop-hint">🗑️ Défausser</div>}
+              </div>
+
+              {gameData?.casinoActive && (
+                <div
+                  className={`casino-zone ${casinoAnimation ? 'casino-flash' : ''} ${dropZoneActive === 'casino' ? 'drop-active' : ''} ${shakeZone === 'casino' ? 'shake' : ''}`}
+                  onDragOver={(e) => handleDragOver(e, 'casino')}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, { type: 'casino' })}
+                >
+                  <div className="casino-head">🎰 CASINO</div>
+                  <div className="casino-bets">
+                    {(gameData.casinoBets || []).map((bet, idx) => (
+                      <span key={idx} className="chip">{bet.playerName} : 🂠 secret</span>
+                    ))}
+                    {(gameData.casinoBets || []).length === 0 && <span className="casino-empty">Aucun pari</span>}
                   </div>
-                  
-                  {selectedCardIndex !== null && (
-                    <div className="action-selector">
-                      <select 
-                        value={selectedAction} 
-                        onChange={(e) => setSelectedAction(e.target.value)}
-                        className="select"
-                      >
-                        <option value="play-self">Jouer sur moi</option>
-                        {playerData?.hand[selectedCardIndex]?.type === 'malus' && (
-                          <option value="play-opponent">Jouer sur adversaire</option>
-                        )}
-                        <option value="discard">Défausser</option>
-                      </select>
-                      <button onClick={playCard} className="btn btn-success">
-                        Jouer la carte
-                      </button>
-                    </div>
-                  )}
+                  <button className="btn btn-secondary btn-sm" onClick={() => setShowCasinoBet(true)}>
+                    Parier un salaire
+                  </button>
+                  {dropZoneActive === 'casino' && <div className="drop-hint">💰 Mise ton salaire !</div>}
                 </div>
               )}
-            </div>
+            </section>
 
-            {/* Votre zone de jeu */}
-            <div 
-              className={`player-area ${isMyTurn() ? 'my-turn' : ''} ${dropZoneActive === 'self' ? 'drop-zone-active' : ''} ${isMyTurn() && draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === 'self' ? 'shake' : ''}`}
+            {/* Ma zone */}
+            <section
+              className={`my-board ${myTurn ? 'my-turn' : ''} ${dropZoneActive === 'self' ? 'drop-active' : ''} ${draggedCardIndex !== null ? 'droppable' : ''} ${shakeZone === 'self' ? 'shake' : ''}`}
               onDragOver={(e) => handleDragOver(e, 'self')}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, { type: 'self' })}
             >
-              {dropZoneActive === 'self' && (
-                <div className="drop-hint-self">✨ Jouer sur toi !</div>
-              )}
-              <div className="player-header">
-                <h3>{playerData?.name} {isMyTurn() && '🎯 (Votre tour)'}</h3>
-                <span className="smiles-big">😊 {playerData?.smiles} Smiles</span>
-              </div>
+              {dropZoneActive === 'self' && <div className="drop-hint drop-hint-board">✨ Jouer sur toi</div>}
 
-              <div className="player-stats">
-                <div className="stat">📚 Études: {playerData?.studies}</div>
-                {playerData?.job && (
-                  <div className="stat stat-job" style={{position: 'relative'}}>
-                    💼 Métier: {getCardEmoji(playerData.job)} {playerData.job.name}
-                    <button 
-                      onClick={() => {
-                        if (window.confirm(`Démissionner de ${playerData.job.name}?${playerData.job.canQuitInstantly ? '' : '\n⚠️ Vous sauterez votre prochain tour!'}`)) {
-                          socket.emit('resign-job');
-                        }
-                      }}
-                      className="resign-btn"
-                      title="Démissionner"
-                    >
-                      ❌
-                    </button>
-                  </div>
-                )}
-                {!playerData?.job && (
-                  <div className="stat stat-no-job">💼 Pas de métier</div>
-                )}
-                {playerData?.married && <div className="stat">💒 Marié(e)</div>}
-                <div className="stat">❤️ Flirts: {playerData?.flirts.length}/5</div>
-                <div className="stat">👶 Enfants: {playerData?.children.length}</div>
-                <div className="stat">🐾 Animaux: {playerData?.pets.length}</div>
-                <div className="stat">💰 Salaires: {playerData?.salaryCount}</div>
-              </div>
-
-              {/* Cartes posées */}
-              <div className="played-cards">
-                <h4>Cartes jouées</h4>
-                <div className="cards-grid">
-                  {playerData?.playedCards.map((card, index) => (
-                    <div 
-                      key={index} 
-                      className={`mini-card ${card.isMalus ? 'malus' : ''} ${card.type === 'job' ? 'job-card' : ''}`} 
-                      title={card.description}
-                    >
-                      <div className="card-emoji">{getCardEmoji(card)}</div>
-                      <div className="card-name">{card.name}</div>
-                      {card.smiles > 0 && <div className="card-mini-smiles">😊 {card.smiles}</div>}
-                    </div>
-                  ))}
+              <div className="my-header">
+                <span className="player-avatar player-avatar-lg">{avatarFor(playerData?.name)}</span>
+                <div className="my-id">
+                  <strong>{playerData?.name}</strong>
+                  <span className="my-job">
+                    {playerData?.job ? (
+                      <>
+                        {playerData.job.image} {playerData.job.name}
+                        <button className="resign-link" onClick={resignJob} title="Démissionner">✕</button>
+                      </>
+                    ) : '💤 Sans métier'}
+                  </span>
                 </div>
+                <span className="smile-pill smile-pill-lg">😊 {playerData?.smiles || 0}</span>
               </div>
 
-              {/* Main du joueur */}
-              <div className="hand">
-                <h4>Votre main {isMyTurn() && draggedCardIndex === null && '(Glisse une carte pour la jouer ✨)'}</h4>
-                <div className="cards-row">
-                  {playerData?.hand.map((card, index) => (
-                    <div
-                      key={index}
-                      className={`card-hand ${selectedCardIndex === index ? 'selected' : ''} ${draggedCardIndex === index ? 'dragging' : ''}`}
-                      onClick={() => setSelectedCardIndex(index)}
-                      draggable={isMyTurn()}
-                      onDragStart={(e) => handleDragStart(e, index)}
-                      onDrag={handleDrag}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <div className="card-emoji-large">{getCardEmoji(card)}</div>
-                      <div className="card-info">
-                        <div className="card-name">{card.name}</div>
-                        <div className="card-smiles">😊 {card.smiles || 0}</div>
-                        {card.type === 'travel' && card.cost && (
-                          <div className="card-cost">💰 Coût: {card.cost}</div>
-                        )}
-                        <div className="card-desc">{card.description}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="my-chips">
+                <span className="chip">📚 Études {playerData?.studies || 0}</span>
+                <span className="chip">💰 Salaires {playerData?.salaryCount || 0}</span>
+                <span className="chip">❤️ Flirts {playerData?.flirts?.length || 0}/5</span>
+                {playerData?.married && <span className="chip">💒 Marié(e)</span>}
+                {playerData?.adultery && <span className="chip">😈 Adultère</span>}
+                {(playerData?.children?.length || 0) > 0 && <span className="chip">👶 {playerData.children.length}</span>}
+                {(playerData?.pets?.length || 0) > 0 && <span className="chip">🐾 {playerData.pets.length}</span>}
               </div>
-            </div>
-          </div>
+
+              <button className="opponent-cards-toggle" onClick={() => setShowMyCards(!showMyCards)}>
+                {showMyCards ? '▾' : '▸'} Mes cartes posées ({playerData?.playedCards?.length || 0})
+              </button>
+              {showMyCards && <CategoryPiles cards={playerData?.playedCards || []} />}
+            </section>
+          </main>
 
           {/* Chat */}
-          <div className="chat-area">
-            <h3>💬 Chat</h3>
+          <aside className={`chat-panel ${showChat ? 'is-open' : ''}`}>
+            <div className="chat-header">
+              <h3>💬 Chat</h3>
+              <button className="icon-btn chat-close" onClick={() => setShowChat(false)}>✕</button>
+            </div>
             <div className="messages">
               {messages.map((msg, index) => (
                 <div key={index} className={`message ${msg.type}`}>
                   {msg.type === 'chat' ? (
-                    <><strong>{msg.playerName}:</strong> {msg.message}</>
+                    <><strong>{msg.playerName}</strong> {msg.message}</>
                   ) : (
                     <em>{msg.message}</em>
                   )}
@@ -1054,128 +833,139 @@ function App() {
                 type="text"
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
-                placeholder="Tapez votre message..."
+                placeholder="Ton message..."
                 className="chat-input"
               />
-              <button type="submit" className="btn-send">Envoyer</button>
+              <button type="submit" className="btn btn-primary btn-sm">➤</button>
             </form>
-          </div>
+          </aside>
         </div>
 
+        {/* Main du joueur */}
+        <footer className="hand-dock">
+          <div className="hand-hint">
+            {myTurn
+              ? (targetMode ? '🎯 Touche un adversaire pour le viser !' : '✨ Glisse une carte ou touche-la pour agir')
+              : `⏳ Tour de ${getCurrentPlayerName()}`}
+          </div>
+          <div className="hand-row">
+            {playerData?.hand?.map((card, index) => (
+              <GameCard
+                key={index}
+                card={card}
+                variant="hand"
+                selected={selectedCardIndex === index}
+                dragging={draggedCardIndex === index}
+                onClick={() => toggleCardSelection(index)}
+                draggable={myTurn}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDrag={handleDrag}
+                onDragEnd={handleDragEnd}
+              />
+            ))}
+          </div>
+        </footer>
+
+        {/* Barre d'action (tactile + clavier) */}
+        {myTurn && selectedCard && !targetMode && (
+          <div className="action-bar">
+            <span className="action-bar-card">{selectedCard.image} {selectedCard.name}</span>
+            {selectedCard.type !== 'malus' && (
+              <button className="btn btn-primary btn-sm" onClick={playSelf}>✨ Jouer</button>
+            )}
+            {selectedCard.type === 'malus' && (
+              <button className="btn btn-danger btn-sm" onClick={() => setTargetMode(true)}>🎯 Sur un adversaire</button>
+            )}
+            {selectedCard.type === 'salary' && gameData?.casinoActive && (
+              <button className="btn btn-secondary btn-sm" onClick={() => {
+                const salaryCardsInHand = playerData.hand.filter(c => c.type === 'salary');
+                placeCasinoBet(salaryCardsInHand.indexOf(selectedCard));
+              }}>🎰 Parier</button>
+            )}
+            <button className="btn btn-ghost btn-sm" onClick={discardSelected}>🗑️ Défausser</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => toggleCardSelection(selectedCardIndex)}>✕</button>
+          </div>
+        )}
+
+        {targetMode && (
+          <div className="action-bar">
+            <span className="action-bar-card">🎯 Choisis ta cible...</span>
+            <button className="btn btn-ghost btn-sm" onClick={() => setTargetMode(false)}>Annuler</button>
+          </div>
+        )}
+
         {error && <div className="error-toast">{error}</div>}
-        
-        {/* Prompt automatique de pari après avoir joué le casino */}
+
+        {/* Modal : proposition de pari après ouverture du casino */}
         {showCasinoBetPrompt && (
           <div className="modal-overlay">
-            <div className="modal-content casino-prompt">
+            <div className="modal-content">
               <h3>🎰 Casino ouvert !</h3>
-              <p>Tu viens de jouer le Casino !</p>
-              <p><strong>Veux-tu parier un salaire immédiatement ?</strong></p>
-              <p className="hint-text">💡 Tu joueras 2 cartes ce tour et piocheras 2 à la fin</p>
-              <div className="casino-prompt-actions">
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => {
-                    setShowCasinoBetPrompt(false);
-                    setShowCasinoBet(true);
-                  }}
-                >
+              <p>Veux-tu parier un salaire de ta main immédiatement ?</p>
+              <p className="hint-text">💡 Parier coûte un tour mais peut doubler ta mise</p>
+              <div className="modal-actions">
+                <button className="btn btn-primary" onClick={() => { setShowCasinoBetPrompt(false); setShowCasinoBet(true); }}>
                   Oui, parier ! 🎲
                 </button>
-                <button 
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setShowCasinoBetPrompt(false);
-                    setCasinoJustPlayed(false);
-                  }}
-                >
-                  Non, passer
+                <button className="btn btn-ghost" onClick={() => setShowCasinoBetPrompt(false)}>
+                  Non merci
                 </button>
               </div>
             </div>
           </div>
         )}
-        
-        {/* Modal pour parier au casino - UTILISE LA MAIN maintenant */}
-        {showCasinoBet && (() => {
-          const salariesInHand = playerData?.hand.filter(card => card.type === 'salary') || [];
-          return salariesInHand.length > 0;
-        })() && (
+
+        {/* Modal : choisir le salaire à parier */}
+        {showCasinoBet && (
           <div className="modal-overlay" onClick={() => setShowCasinoBet(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>🎰 Choisissez un salaire de votre main à parier</h3>
-              <div className="casino-bet-grid">
-                {playerData?.hand
-                  .map((card, originalIndex) => ({ card, originalIndex }))
-                  .filter(({ card }) => card.type === 'salary')
-                  .map(({ card, originalIndex }, salaryIndex) => (
-                    <div 
-                      key={originalIndex} 
-                      className="casino-bet-card"
-                      onClick={() => {
-                        placeCasinoBet(salaryIndex);
-                        setCasinoJustPlayed(false);
-                      }}
-                    >
-                      <div className="card-emoji-large">{getCardEmoji(card)}</div>
-                      <div className="card-name">{card.name}</div>
-                      <div className="card-value">Valeur: {card.salaryValue || 1}</div>
-                    </div>
-                  ))}
-              </div>
-              <button 
-                className="btn btn-secondary" 
-                onClick={() => {
-                  setShowCasinoBet(false);
-                  setCasinoJustPlayed(false);
-                }}
-              >
-                Annuler
-              </button>
+              {(playerData?.hand?.filter(c => c.type === 'salary') || []).length > 0 ? (
+                <>
+                  <h3>🎰 Choisis un salaire à parier</h3>
+                  <p className="hint-text">Ta mise restera secrète jusqu'à la fin du duel</p>
+                  <div className="modal-cards">
+                    {playerData.hand
+                      .map((card, originalIndex) => ({ card, originalIndex }))
+                      .filter(({ card }) => card.type === 'salary')
+                      .map(({ card }, salaryIndex) => (
+                        <GameCard
+                          key={salaryIndex}
+                          card={card}
+                          variant="pick"
+                          onClick={() => placeCasinoBet(salaryIndex)}
+                        />
+                      ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3>❌ Aucun salaire en main</h3>
+                  <p>Tu n'as pas de carte Salaire à parier !</p>
+                </>
+              )}
+              <button className="btn btn-ghost" onClick={() => setShowCasinoBet(false)}>Fermer</button>
             </div>
           </div>
         )}
-        
-        {showCasinoBet && (() => {
-          const salariesInHand = playerData?.hand.filter(card => card.type === 'salary') || [];
-          return salariesInHand.length === 0;
-        })() && (
-          <div className="modal-overlay" onClick={() => setShowCasinoBet(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>❌ Aucun salaire dans ta main</h3>
-              <p>Tu n'as pas de salaire dans ta main à parier au casino !</p>
-              <button className="btn btn-secondary" onClick={() => setShowCasinoBet(false)}>
-                Fermer
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* Modal pour la carte Chance - Choisir une carte de la défausse */}
+
+        {/* Modal : carte Chance */}
         {showChanceModal && (
           <div className="modal-overlay">
-            <div className="modal-content chance-modal" onClick={(e) => e.stopPropagation()}>
-              <h3>🍀 CHANCE ! Choisis une carte de la défausse</h3>
-              <p>Tu peux récupérer n'importe quelle carte de la défausse !</p>
-              <div className="chance-cards-grid">
-                {chanceDiscardPile.length > 0 ? (
-                  chanceDiscardPile.slice().reverse().map((card, index) => {
-                    const actualIndex = chanceDiscardPile.length - 1 - index;
-                    return (
-                      <div 
-                        key={actualIndex} 
-                        className="chance-card"
-                        onClick={() => selectChanceCard(actualIndex)}
-                      >
-                        <div className="card-emoji-large">{getCardEmoji(card)}</div>
-                        <div className="card-name">{card.name}</div>
-                        <div className="card-smiles">😊 {card.smiles || 0}</div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p>Défausse vide !</p>
-                )}
+            <div className="modal-content">
+              <h3>🍀 CHANCE !</h3>
+              <p>Choisis une carte de la défausse pour la récupérer dans ta main :</p>
+              <div className="modal-cards">
+                {chanceDiscardPile.slice().reverse().map((card, index) => {
+                  const actualIndex = chanceDiscardPile.length - 1 - index;
+                  return (
+                    <GameCard
+                      key={actualIndex}
+                      card={card}
+                      variant="pick"
+                      onClick={() => selectChanceCard(actualIndex)}
+                    />
+                  );
+                })}
               </div>
               <p className="hint-text">Tu dois choisir une carte pour terminer ton tour 🍀</p>
             </div>
@@ -1185,92 +975,60 @@ function App() {
     );
   }
 
-  // Rendu de fin de partie
   if (gameState === 'gameover') {
     const renderStat = (statData, emoji, label) => {
       if (!statData || statData.length === 0) return null;
       return (
         <div className="stat-item">
           <span className="stat-emoji">{emoji}</span>
-          <span className="stat-label">{label}:</span>
+          <span className="stat-label">{label}</span>
           <span className="stat-values">
-            {statData.map((p, i) => (
-              <span key={i}>{p.name} ({p.value}){i < statData.length - 1 && ', '}</span>
-            ))}
+            {statData.map((p, i) => `${p.name} (${p.value})`).join(', ')}
           </span>
         </div>
       );
     };
 
     return (
-      <div className="App">
-        {/* Confettis */}
+      <div className="app screen-center">
         <Confetti active={showConfetti} />
-        
-        <div className="container">
-          <h1 className="title">🏆 Partie terminée 🏆</h1>
-          <div className="gameover-card">
-            <h2>🥇 Classement final</h2>
-            <div className="scores-list">
+        <div className="gameover-wrap">
+          <h1 className="logo-title">🏆 Partie terminée</h1>
+
+          <div className="glass-card gameover-card">
+            <div className="podium">
               {gameData?.finalScores?.map((score, index) => (
-                <div key={index} className={`score-item rank-${index + 1}`}>
-                  <span className="rank">
-                    {index === 0 && '🥇'}
-                    {index === 1 && '🥈'}
-                    {index === 2 && '🥉'}
-                    {index > 2 && `${index + 1}.`}
+                <div key={index} className={`podium-row rank-${index + 1}`}>
+                  <span className="podium-rank">
+                    {['🥇', '🥈', '🥉'][index] || `${index + 1}.`}
                   </span>
-                  <span className="player-name">{score.name}</span>
-                  <span className="score">😊 {score.smiles}</span>
+                  <span className="player-avatar">{avatarFor(score.name)}</span>
+                  <span className="podium-name">{score.name}</span>
+                  <span className="smile-pill">😊 {score.smiles}</span>
                 </div>
               ))}
             </div>
 
             {gameData?.stats && (
               <div className="stats-section">
-                <h3>📊 Statistiques de la partie</h3>
+                <h3>📊 Récompenses de la partie</h3>
                 <div className="stats-grid">
-                  {renderStat(gameData.stats.mostMalus, '💔', 'Plus de malus subis')}
-                  {renderStat(gameData.stats.mostStudies, '📚', 'Plus haut niveau d\'études')}
-                  {renderStat(gameData.stats.mostSalaryEnd, '💰', 'Plus de salaires à la fin')}
-                  {renderStat(gameData.stats.mostSalaryTotal, '💵', 'Plus de salaires durant la partie')}
-                  {renderStat(gameData.stats.mostTravels, '✈️', 'Plus de voyages')}
-                  {renderStat(gameData.stats.mostFlirts, '❤️', 'Plus de flirts')}
-                  {renderStat(gameData.stats.mostChildren, '👶', 'Plus d\'enfants')}
-                  {renderStat(gameData.stats.mostPets, '🐾', 'Plus d\'animaux')}
-                  {renderStat(gameData.stats.mostJobs, '💼', 'Plus de métiers durant la partie')}
-                  {renderStat(gameData.stats.mostMarriages, '💒', 'Plus de mariages durant la partie')}
-                </div>
-                
-                <h3 style={{marginTop: '30px'}}>📈 Stats détaillées de tous les joueurs</h3>
-                <div className="all-stats-table">
-                  {gameData.stats.allPlayers?.map((player, idx) => (
-                    <div key={idx} className="player-stats-row">
-                      <div className="player-stats-name">{player.name}</div>
-                      <div className="player-stats-details">
-                        <span>😊 {player.smiles}</span>
-                        <span>📚 {player.studies}</span>
-                        <span>💔 {player.malus}</span>
-                        <span>💰 {player.salaryEnd}</span>
-                        <span>💵 {player.salaryTotal}</span>
-                        <span>✈️ {player.travels}</span>
-                        <span>❤️ {player.flirts}</span>
-                        <span>👶 {player.children}</span>
-                        <span>🐾 {player.pets}</span>
-                        <span>💼 {player.jobs}</span>
-                        <span>💒 {player.marriages}</span>
-                      </div>
-                    </div>
-                  ))}
+                  {renderStat(gameData.stats.mostMalus, '💔', 'Tête à claques (malus subis)')}
+                  {renderStat(gameData.stats.mostStudies, '📚', 'Grosse tête (études)')}
+                  {renderStat(gameData.stats.mostSalaryEnd, '💰', 'Radin (salaires à la fin)')}
+                  {renderStat(gameData.stats.mostSalaryTotal, '💵', 'Gagne-pain (salaires totaux)')}
+                  {renderStat(gameData.stats.mostTravels, '✈️', 'Globe-trotter (voyages)')}
+                  {renderStat(gameData.stats.mostFlirts, '❤️', 'Cœur d\'artichaut (flirts)')}
+                  {renderStat(gameData.stats.mostChildren, '👶', 'Famille nombreuse (enfants)')}
+                  {renderStat(gameData.stats.mostPets, '🐾', 'Arche de Noé (animaux)')}
+                  {renderStat(gameData.stats.mostJobs, '💼', 'Girouette (métiers)')}
+                  {renderStat(gameData.stats.mostMarriages, '💒', 'Romantique (mariages)')}
                 </div>
               </div>
             )}
-            
-            <button 
-              onClick={() => window.location.reload()} 
-              className="btn btn-primary"
-            >
-              Retour au menu
+
+            <button onClick={() => window.location.reload()} className="btn btn-primary btn-lg">
+              🔄 Retour au menu
             </button>
           </div>
         </div>
