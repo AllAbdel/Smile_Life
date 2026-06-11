@@ -478,6 +478,7 @@
       "id": "special-3",
       "name": "Anniversaire",
       "type": "special",
+      "effect": "birthday",
       "smiles": 1,
       "description": "Joyeux anniversaire ! +1 smile + Vole le dernier salaire de chaque adversaire",
       "image": "🎂",

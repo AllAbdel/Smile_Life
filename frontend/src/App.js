@@ -35,7 +35,6 @@ function App() {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [currentMusic, setCurrentMusic] = useState(null);
   const [expandedPlayers, setExpandedPlayers] = useState({}); // Pour les cartes déroulantes
-  const [showDiscardPicker, setShowDiscardPicker] = useState(false); // Pour la carte Chance
   const [showCasinoBet, setShowCasinoBet] = useState(false); // Pour parier au casino
   const [casinoAnimation, setCasinoAnimation] = useState(false); // Animation du casino
   const [showConfetti, setShowConfetti] = useState(false); // Confettis pour célébrations
@@ -287,14 +286,6 @@ function App() {
       return;
     }
 
-    const card = playerData?.hand[selectedCardIndex];
-    
-    // Si c'est une carte Chance, ouvrir le sélecteur de défausse
-    if (card && card.id === 'special-2') {
-      setShowDiscardPicker(true);
-      return;
-    }
-
     if (selectedAction === 'play-opponent' && !selectedTarget) {
       setError('Sélectionnez un adversaire');
       return;
@@ -310,18 +301,7 @@ function App() {
   const takeDiscard = () => {
     socket.emit('take-discard');
   };
-  
-  const takeDiscardCard = (cardIndex) => {
-    socket.emit('take-discard-card', { cardIndex });
-    setShowDiscardPicker(false);
-    // Jouer automatiquement la carte Chance
-    socket.emit('play-card', {
-      cardIndex: selectedCardIndex,
-      targetPlayerId: null,
-      action: 'play-self'
-    });
-  };
-  
+
   const togglePlayerExpanded = (playerId) => {
     console.log('Toggle player expanded:', playerId, 'Current state:', expandedPlayers[playerId]);
     setExpandedPlayers(prev => ({
@@ -407,16 +387,7 @@ function App() {
           errorMessage = '❌ Tu ne peux pas jouer un malus sur toi-même !';
           setShakeZone('self');
         } else {
-          // Vérifier si c'est un casino
-          if (card.id === 'special-1') {
-            // C'est un casino ! Vérifier si le joueur a un salaire
-            const hasSalary = playerData?.hand.some(c => c.type === 'salary' && c !== card);
-            if (hasSalary) {
-              setCasinoJustPlayed(true);
-              setShowCasinoBetPrompt(true);
-            }
-          }
-          
+          // Le prompt de pari casino est envoyé par le serveur (casino-prompt-bet)
           socket.emit('play-card', {
             cardIndex: draggedCardIndex,
             targetPlayerId: null,
@@ -1182,7 +1153,7 @@ function App() {
         
         {/* Modal pour la carte Chance - Choisir une carte de la défausse */}
         {showChanceModal && (
-          <div className="modal-overlay" onClick={() => setShowChanceModal(false)}>
+          <div className="modal-overlay">
             <div className="modal-content chance-modal" onClick={(e) => e.stopPropagation()}>
               <h3>🍀 CHANCE ! Choisis une carte de la défausse</h3>
               <p>Tu peux récupérer n'importe quelle carte de la défausse !</p>
@@ -1206,36 +1177,7 @@ function App() {
                   <p>Défausse vide !</p>
                 )}
               </div>
-              <button className="btn btn-secondary" onClick={() => setShowChanceModal(false)}>
-                Annuler
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {showDiscardPicker && (
-          <div className="modal-overlay" onClick={() => setShowDiscardPicker(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>🍀 Chance ! Choisissez une carte de la défausse</h3>
-              <div className="discard-picker-grid">
-                {gameData?.discardPile.slice().reverse().map((card, index) => {
-                  const actualIndex = gameData.discardPile.length - 1 - index;
-                  return (
-                    <div 
-                      key={actualIndex} 
-                      className="discard-picker-card"
-                      onClick={() => takeDiscardCard(actualIndex)}
-                    >
-                      <div className="card-emoji-large">{getCardEmoji(card)}</div>
-                      <div className="card-name">{card.name}</div>
-                      <div className="card-smiles">😊 {card.smiles || 0}</div>
-                    </div>
-                  );
-                })}
-              </div>
-              <button className="btn btn-secondary" onClick={() => setShowDiscardPicker(false)}>
-                Annuler
-              </button>
+              <p className="hint-text">Tu dois choisir une carte pour terminer ton tour 🍀</p>
             </div>
           </div>
         )}
