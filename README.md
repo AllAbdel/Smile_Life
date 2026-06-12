@@ -60,13 +60,16 @@ scripts/start-avec-ngrok.bat
 
 - ✅ Multijoueur en temps réel (Socket.io)
 - ✅ 2 à 6 joueurs
-- ✅ Salons privés avec codes
-- ✅ Chat intégré
+- ✅ Salons privés avec codes (copiables en un clic)
+- ✅ Interface moderne (thème sombre, cartes colorées par type, avatars)
+- ✅ 100% jouable sur mobile (barre d'action tactile, chat en overlay)
+- ✅ Drag & drop des cartes sur desktop
+- ✅ 15 métiers dont 8 à pouvoirs spéciaux (Policier, Bandit, Pompier, Astronaute...)
+- ✅ Casino avec duels de paris secrets
+- ✅ Cartes spéciales : Chance, Tsunami, Anniversaire, Adultère
+- ✅ Chat intégré + soundboard synchronisé + musique YouTube
+- ✅ Statistiques et récompenses de fin de partie
 - ✅ Cartes personnalisables (JSON)
-- ✅ Interface intuitive et colorée
-- ✅ Statistiques en direct
-- ✅ Casino et paris
-- ✅ Musique YouTube intégrée
 
 ## 🛠️ Technologies
 
@@ -113,8 +116,22 @@ npm install
 1. Entre ton pseudo
 2. **Créer un salon** (hôte) ou **Rejoindre** avec un code
 3. L'hôte lance la partie quand tout le monde est prêt
-4. Joue tes cartes stratégiquement
-5. Gagne des Smiles et atteint 15 en premier !
+4. À ton tour : joue ou défausse une carte (ta main se recomplète à 5)
+5. Quand la pioche est vide, le joueur avec le plus de Smiles 😊 gagne !
+
+### 💼 Les métiers à pouvoirs
+
+| Métier | Pouvoir |
+|--------|---------|
+| 👮 Policier | Arrête automatiquement les Bandits (3 tours de prison) |
+| 🦹 Bandit | Ne peut pas être licencié, salaire niv.4 sans études |
+| 🪖 Militaire | Bloque tous les attentats tant qu'il est en jeu |
+| ⚖️ Avocat | Immunisé contre le Divorce |
+| 🚒 Pompier | Immunisé contre les Accidents |
+| 🛋️ Psychologue | Immunisé contre le Burn-out |
+| 👨‍🏫 Professeur | Chaque carte Études donne +1 niveau bonus |
+| 🚀 Astronaute | Tous les voyages coûtent 2 salaires de moins |
+| 🤳 Influenceur | +1 smile bonus sur chaque carte qui en rapporte |
 
 ## 🃏 Cartes Personnalisées
 

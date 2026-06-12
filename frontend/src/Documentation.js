@@ -39,12 +39,17 @@ const Documentation = ({ onClose }) => {
               <li>👮 Policier (2) : Niv.1 max - Arrête les bandits !</li>
               <li>💉 Infirmier (3) : Niv.2 max - Peut étudier</li>
               <li>⚙️ Ingénieur (5) : Niv.3 max - Peut étudier</li>
-              <li>⚖️ Avocat (5) : Niv.3 max - Peut étudier</li>
+              <li>⚖️ Avocat (5) : Niv.3 max - Peut étudier - Immunisé contre le Divorce !</li>
               <li>🩺 Chirurgien (6) : Niv.4 max - Peut étudier</li>
               <li>🪖 Militaire (0) : Niv.1 max - Bloque les attentats !</li>
               <li>🦹 Bandit (0) : Niv.4 max - Ne peut pas être licencié !</li>
+              <li>🚒 Pompier (1) : Niv.2 max - Immunisé contre les Accidents !</li>
+              <li>🛋️ Psychologue (4) : Niv.2 max - Peut étudier - Immunisé contre le Burn-out !</li>
+              <li>👨‍🏫 Professeur (4) : Niv.2 max - Peut étudier - Chaque carte Études donne +1 niveau bonus !</li>
+              <li>🚀 Astronaute (6) : Niv.3 max - Tous les voyages coûtent 2 salaires de moins !</li>
+              <li>🤳 Influenceur (0) : Niv.2 max - Démission instant - +1 smile bonus sur chaque carte qui en rapporte !</li>
             </ul>
-            <p>• <strong>Démission :</strong> Certains métiers te font sauter ton tour si tu démissionnes</p>
+            <p>• <strong>Démission :</strong> Certains métiers te font sauter ton tour si tu démissionnes. Tu gardes tes salaires posés.</p>
           </div>
 
           <div className="card-type">
@@ -120,15 +125,15 @@ const Documentation = ({ onClose }) => {
           <div className="card-type danger">
             <h4>💔 MALUS (à jouer sur adversaires)</h4>
             <ul>
-              <li><strong>💔 Divorce</strong> : Retire le mariage (-3 smiles)</li>
-              <li><strong>📉 Licenciement</strong> : Retire le métier + tous les salaires (-2 smiles)</li>
-              <li><strong>🚨 Accident</strong> : -2 smiles + <strong>saute le prochain tour</strong></li>
-              <li><strong>😰 Burn-out</strong> : -1 smile + <strong>saute le prochain tour</strong> (nécessite un métier)</li>
+              <li><strong>💔 Divorce</strong> : Retire le mariage (l'Avocat est immunisé)</li>
+              <li><strong>📉 Licenciement</strong> : Retire le métier, mais tu gardes tes salaires posés</li>
+              <li><strong>🚨 Accident</strong> : -2 smiles + <strong>saute le prochain tour</strong> (le Pompier est immunisé)</li>
+              <li><strong>😰 Burn-out</strong> : -1 smile + <strong>saute le prochain tour</strong> (nécessite un métier, le Psychologue est immunisé)</li>
               <li><strong>🤒 Maladie</strong> : <strong>Saute le prochain tour</strong></li>
-              <li><strong>⛓️ Prison</strong> : <strong>Saute 3 tours</strong> + perd le métier Bandit</li>
+              <li><strong>⛓️ Prison</strong> : <strong>Saute 3 tours</strong> + perd le métier Bandit (et ses smiles)</li>
               <li><strong>💣 Attentat</strong> : Tue tous les enfants du joueur ciblé !</li>
             </ul>
-            <p>• <strong>Protection :</strong> Le � Militaire empêche les attentats</p>
+            <p>• <strong>Protection :</strong> Le 🪖 Militaire empêche tous les attentats tant qu'il est en jeu</p>
           </div>
 
           <div className="card-type special">

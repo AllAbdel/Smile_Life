@@ -11,14 +11,15 @@
 - Drag & drop des cartes avec ghost, sons procéduraux, soundboard synchronisé, chat, musiques YouTube, confettis.
 - Jeu en LAN et via ngrok, build Electron Windows.
 
-## 🔄 En cours (refonte 2026-06)
+## ✅ Refonte 2026-06 (terminée le 2026-06-12)
 - [x] Nettoyage dépôt git
 - [x] Memory Bank
-- [ ] Corrections bugs backend (voir activeContext.md)
-- [ ] Nouveaux rôles à pouvoirs
-- [ ] Refonte visuelle complète
-- [ ] Responsive mobile
-- [ ] Documentation à jour
+- [x] Corrections bugs backend (casino secret, flux Chance, déconnexions, paiements exacts...)
+- [x] Nouveaux rôles à pouvoirs (Pompier, Psychologue, Professeur, Astronaute, Influenceur, Avocat)
+- [x] Refonte visuelle complète (design system sombre, GameCard, barre d'action tactile)
+- [x] Responsive mobile (mobile-first, chat overlay, safe areas)
+- [x] Documentation à jour (guide in-game + README)
+- [x] Déploiement du frontend sur Vercel (le backend reste auto-hébergé : LAN/ngrok)
 
 ## ❌ Limitations connues
 - Pas de reconnexion en cours de partie (socket.id = identité).
