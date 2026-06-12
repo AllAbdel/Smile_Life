@@ -8,10 +8,13 @@ import SoundManager from './SoundManager';
 import GameCard from './components/GameCard';
 import CategoryPiles from './components/CategoryPiles';
 
-// Détection automatique de l'adresse du serveur
+// Détection automatique de l'adresse du serveur.
+// Sur la version hébergée (Vercel), il n'y a pas de backend : le joueur doit
+// renseigner l'adresse de son serveur (LAN ou tunnel ngrok/https).
+const IS_HOSTED = window.location.hostname.endsWith('.vercel.app');
 const DEFAULT_SOCKET_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:3001'
-  : `http://${window.location.hostname}:3001`;
+  : IS_HOSTED ? '' : `http://${window.location.hostname}:3001`;
 
 // Avatar emoji stable dérivé du nom du joueur
 const AVATARS = ['😎', '🤠', '🥳', '🤓', '😺', '🦊', '🐼', '🐸', '🦄', '🐯', '🤖', '👽', '🐙', '🦁', '🐰', '🐨'];
@@ -72,6 +75,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!serverUrl) return; // Pas de serveur configuré (version hébergée)
     const newSocket = io(serverUrl);
     setSocket(newSocket);
 
@@ -250,6 +254,11 @@ function App() {
   // ---------- Actions ----------
 
   const createGame = () => {
+    if (!socket) {
+      setError('Configure d\'abord l\'adresse de ton serveur de jeu (⚙️ ci-dessous)');
+      setShowServerConfig(true);
+      return;
+    }
     if (!playerName.trim()) {
       setError('Entre un nom de joueur');
       return;
@@ -258,6 +267,11 @@ function App() {
   };
 
   const joinGame = () => {
+    if (!socket) {
+      setError('Configure d\'abord l\'adresse de ton serveur de jeu (⚙️ ci-dessous)');
+      setShowServerConfig(true);
+      return;
+    }
     if (!playerName.trim() || !joinRoomId.trim()) {
       setError('Entre un nom de joueur et un code de partie');
       return;
@@ -501,6 +515,12 @@ function App() {
           </div>
 
           <div className="glass-card menu-card">
+            {IS_HOSTED && !serverUrl && (
+              <div className="hosted-notice">
+                🌐 Version en ligne : renseigne l'adresse du serveur de jeu de ton hôte
+                (tunnel ngrok ou IP) dans <strong>⚙️ Options avancées</strong>.
+              </div>
+            )}
             <input
               type="text"
               placeholder="Ton nom de joueur"
@@ -530,14 +550,14 @@ function App() {
               </button>
             </div>
 
-            <details className="menu-advanced">
+            <details className="menu-advanced" open={IS_HOSTED && !serverUrl}>
               <summary>⚙️ Options avancées</summary>
               <div className="menu-advanced-content">
                 <button
                   className="btn btn-ghost"
                   onClick={() => setShowServerConfig(!showServerConfig)}
                 >
-                  🌐 Serveur : {serverUrl.replace('http://', '')}
+                  🌐 Serveur : {serverUrl ? serverUrl.replace('http://', '') : 'non configuré'}
                 </button>
                 {showServerConfig && (
                   <div className="server-config-panel">
